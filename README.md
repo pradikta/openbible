@@ -295,14 +295,14 @@ Service workers need HTTPS except on `localhost`, so put the container behind a 
 
 ### CI and images
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds and tests on every push and pull request, validates the compose file, and smoke tests the image with [`tools/smoke_test.sh`](tools/smoke_test.sh) on both `amd64` and `arm64` (the ARM64 image runs under QEMU, since the target Portainer host is ARM64). On `main` and `v*` tags, once those jobs pass, a multi-arch image is pushed to `ghcr.io/pradikta/openbible` (`latest`, version tags, short SHA) without attestation manifests so Portainer can pull it. Pull requests only verify; nothing is pushed.
+Two workflows share the work. [`.github/workflows/ci.yml`](.github/workflows/ci.yml) only verifies: it builds and tests, validates the compose file, and smoke tests the image with [`tools/smoke_test.sh`](tools/smoke_test.sh) on both `amd64` and `arm64` (the ARM64 image runs under QEMU, since the target Portainer host is ARM64). It runs on pull requests and can be called by other workflows. [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs on pushes to `main` and `v*` tags: it calls `ci.yml` first, and once that passes it pushes a multi-arch image to `ghcr.io/pradikta/openbible` (`latest`, version tags, short SHA) without attestation manifests so Portainer can pull it. Pull requests never push anything.
 
 **GitHub setup:** no secrets or environments are required. The workflow logs in to GHCR with the built-in `GITHUB_TOKEN` and requests `packages: write` itself, so nothing needs configuring in *Settings → Secrets and variables*. Two optional steps:
 
 - After the first publish, open the package (*Packages → openbible → Package settings*) and set the visibility to public if Portainer should pull without credentials. A private package needs a registry login in Portainer using a personal access token with `read:packages`.
 - If the package already exists from another source, grant this repository write access under *Package settings → Manage Actions access*.
 
-A deploy job that calls a Portainer webhook is not part of this workflow. If added later, it would need a `PORTAINER_WEBHOOK_URL` secret (preferably on a protected environment such as `PRD`). The first published package may need its visibility set to public in the repository's package settings.
+A Portainer redeploy step is not part of `deploy.yml`. If added later, it would need a `PORTAINER_WEBHOOK_URL` secret (preferably on a protected environment such as `PRD`).
 
 ### Styling (Tailwind CSS)
 

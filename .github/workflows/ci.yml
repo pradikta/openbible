@@ -1,11 +1,10 @@
 name: CI
 
+# Verification only. Pushes to main and tags run it through deploy.yml before publishing.
 on:
-  push:
-    branches: [main]
-    tags: ["v*"]
   pull_request:
     branches: [main]
+  workflow_call:
   workflow_dispatch:
 
 concurrency:
@@ -15,8 +14,6 @@ concurrency:
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-test:
@@ -139,52 +136,3 @@ jobs:
       - name: Remove container
         if: always()
         run: docker rm --force openbible-arm64 || true
-
-  publish:
-    name: Publish image to GHCR
-    if: github.event_name != 'pull_request'
-    needs: [compose, docker-amd64, docker-arm64]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: docker/setup-qemu-action@v4
-
-      - uses: docker/setup-buildx-action@v4
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Image metadata
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,format=short
-
-      - name: Build and push
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          # Portainer pulls the arm64 manifest; amd64 keeps the tag usable on regular Docker hosts.
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: |
-            type=gha,scope=amd64
-            type=gha,scope=arm64
-          cache-to: type=gha,mode=max,scope=release
-          # Attestation manifests are skipped so every registry client, Portainer included, can pull the tag.
-          provenance: false
