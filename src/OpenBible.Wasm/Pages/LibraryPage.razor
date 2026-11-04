@@ -1,0 +1,144 @@
+@page "/library"
+@inject IMediator Mediator
+@inject NavigationManager Navigation
+
+<PageTitle>Library</PageTitle>
+
+<section class="panel">
+    <h1>Library</h1>
+    <p class="muted">Installed translations stay on this device.</p>
+
+    @if (_loading)
+    {
+        <LoadingSpinner />
+    }
+    else if (_error is not null)
+    {
+        <ErrorDisplay Message="@_error" />
+    }
+    else if (_versions.Count == 0)
+    {
+        <p>No translations installed.</p>
+        <a class="primary-btn" href="import">Import</a>
+    }
+    else
+    {
+        @foreach (var version in _versions)
+        {
+            var isActive = version.Id == _activeVersionId;
+            <article class="version-card @(isActive ? "active" : null)">
+                <strong>@version.Title</strong>
+                @if (isActive)
+                {
+                    <span class="muted"> · Reading</span>
+                }
+                <p class="muted">@version.Language · @version.TotalBooks books</p>
+                @if (!string.IsNullOrWhiteSpace(version.Description))
+                {
+                    <p>@version.Description</p>
+                }
+                <div class="row-actions">
+                    <button type="button" class="primary-btn" @onclick="() => OpenVersion(version.Id)">Open</button>
+                    @if (_confirmDeleteId == version.Id)
+                    {
+                        <button type="button" class="danger-btn" @onclick="() => Delete(version.Id)">Confirm delete</button>
+                        <button type="button" class="text-btn" @onclick="() => _confirmDeleteId = null">Cancel</button>
+                    }
+                    else
+                    {
+                        <button type="button" class="danger-btn" @onclick="() => _confirmDeleteId = version.Id">Delete</button>
+                    }
+                </div>
+                @if (_bookmarks.TryGetValue(version.Id, out var bookmarks) && bookmarks.Count > 0)
+                {
+                    <h2>Bookmarks</h2>
+                    @foreach (var bookmark in bookmarks)
+                    {
+                        <button type="button" class="bookmark-row" @onclick="() => OpenBookmark(bookmark)">
+                            @bookmark.BookName @bookmark.Chapter:@bookmark.Verse
+                        </button>
+                    }
+                }
+            </article>
+        }
+    }
+</section>
+
+@code {
+    private IReadOnlyList<BibleVersionDto> _versions = [];
+    private Dictionary<string, IReadOnlyList<BookmarkDto>> _bookmarks = new(StringComparer.OrdinalIgnoreCase);
+    private string? _activeVersionId;
+    private string? _confirmDeleteId;
+    private string? _error;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        var versions = await Mediator.Send(new GetInstalledVersionsQuery());
+        if (!versions.IsSuccess || versions.Value is null)
+        {
+            _error = versions.Error ?? "Could not load the library.";
+            _loading = false;
+            return;
+        }
+
+        _versions = versions.Value;
+        _bookmarks = new Dictionary<string, IReadOnlyList<BookmarkDto>>(StringComparer.OrdinalIgnoreCase);
+        ReadingPositionDto? newest = null;
+
+        foreach (var version in _versions)
+        {
+            var bookmarks = await Mediator.Send(new GetBookmarksQuery(version.Id));
+            _bookmarks[version.Id] = bookmarks.IsSuccess && bookmarks.Value is not null
+                ? bookmarks.Value
+                : [];
+
+            var position = await Mediator.Send(new GetReadingPositionQuery(version.Id));
+            if (position.IsSuccess && position.Value is not null &&
+                (newest is null || position.Value.LastReadAt > newest.LastReadAt))
+            {
+                newest = position.Value;
+            }
+        }
+
+        _activeVersionId = newest?.VersionId ?? _versions.FirstOrDefault()?.Id;
+        _loading = false;
+    }
+
+    private async Task OpenVersion(string versionId)
+    {
+        var position = await Mediator.Send(new GetReadingPositionQuery(versionId));
+        if (position.IsSuccess && position.Value is not null)
+        {
+            Navigation.NavigateTo($"/read/{versionId}/{(int)position.Value.BookId}/{position.Value.Chapter}");
+            return;
+        }
+
+        Navigation.NavigateTo($"/read/{versionId}/0/1");
+    }
+
+    private void OpenBookmark(BookmarkDto bookmark)
+    {
+        Navigation.NavigateTo($"/read/{bookmark.VersionId}/{(int)bookmark.BookId}/{bookmark.Chapter}/{bookmark.Verse}");
+    }
+
+    private async Task Delete(string versionId)
+    {
+        var result = await Mediator.Send(new DeleteVersionCommand(versionId));
+        _confirmDeleteId = null;
+        if (!result.IsSuccess)
+        {
+            _error = result.Error;
+            return;
+        }
+
+        await LoadAsync();
+    }
+}

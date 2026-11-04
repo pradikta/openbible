@@ -1,6 +1,7 @@
 using MediatR;
 using OpenBible.Application.Common.Models;
 using OpenBible.Application.Search.DTOs;
+using OpenBible.Domain.Catalog;
 using OpenBible.Domain.Interfaces;
 
 namespace OpenBible.Application.Search.Queries.SearchBible;
@@ -33,7 +34,7 @@ public sealed class SearchBibleHandler : IRequestHandler<SearchBibleQuery, Resul
             m.Reference.ToAri(),
             m.VersionId,
             m.Reference.Book,
-            m.Reference.Book.ToString(),
+            BibleBookCatalog.Get(m.Reference.Book).FullName,
             m.Reference.Chapter,
             m.Reference.Verse,
             m.Text,

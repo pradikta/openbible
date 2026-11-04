@@ -1,11 +1,11 @@
 {
-  "name": "OpenBible.Wasm",
-  "short_name": "OpenBible.Wasm",
+  "name": "OpenBible",
+  "short_name": "OpenBible",
   "id": "./",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#03173d",
+  "background_color": "#f6f3ee",
+  "theme_color": "#1e3a5f",
   "prefer_related_applications": false,
   "icons": [
     {

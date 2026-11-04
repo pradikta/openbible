@@ -13,6 +13,7 @@ public static class DependencyInjection
         services.AddSingleton<IBibleRepository, InMemoryBibleRepository>();
         services.AddSingleton<IUserDataRepository, InMemoryUserDataRepository>();
         services.AddSingleton<ISearchIndex, SimpleSearchIndex>();
+        services.AddSingleton<SampleScriptureSeeder>();
 
         return services;
     }

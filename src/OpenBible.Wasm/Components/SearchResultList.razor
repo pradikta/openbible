@@ -1,0 +1,86 @@
+@if (Results.Count == 0)
+{
+    <p class="muted">No verses matched.</p>
+}
+else
+{
+    @foreach (var result in Results)
+    {
+        <button type="button" class="result-card" @onclick="() => Open(result)">
+            <strong>@result.BookName @result.Chapter:@result.Verse</strong>
+            <p>
+                @foreach (var part in Split(result.Snippet, Query))
+                {
+                    if (part.Mark)
+                    {
+                        <mark class="mark">@part.Text</mark>
+                    }
+                    else
+                    {
+                        @part.Text
+                    }
+                }
+            </p>
+        </button>
+    }
+}
+
+@code {
+    [Parameter] public string Query { get; set; } = string.Empty;
+    [Parameter] public IReadOnlyList<SearchResultDto> Results { get; set; } = [];
+    [Parameter] public EventCallback<SearchResultDto> OnOpen { get; set; }
+
+    private async Task Open(SearchResultDto result)
+    {
+        if (OnOpen.HasDelegate)
+        {
+            await OnOpen.InvokeAsync(result);
+        }
+    }
+
+    private static List<(string Text, bool Mark)> Split(string snippet, string query)
+    {
+        var parts = new List<(string Text, bool Mark)> { (snippet, false) };
+        var terms = query.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (var term in terms)
+        {
+            parts = Expand(parts, term);
+        }
+
+        return parts;
+    }
+
+    private static List<(string Text, bool Mark)> Expand(List<(string Text, bool Mark)> parts, string term)
+    {
+        var next = new List<(string Text, bool Mark)>();
+        foreach (var part in parts)
+        {
+            if (part.Mark || part.Text.Length == 0)
+            {
+                next.Add(part);
+                continue;
+            }
+
+            var remaining = part.Text;
+            while (remaining.Length > 0)
+            {
+                var at = remaining.IndexOf(term, StringComparison.OrdinalIgnoreCase);
+                if (at < 0)
+                {
+                    next.Add((remaining, false));
+                    break;
+                }
+
+                if (at > 0)
+                {
+                    next.Add((remaining[..at], false));
+                }
+
+                next.Add((remaining.Substring(at, term.Length), true));
+                remaining = remaining[(at + term.Length)..];
+            }
+        }
+
+        return next;
+    }
+}

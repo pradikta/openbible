@@ -1,0 +1,303 @@
+@page "/"
+@page "/read"
+@page "/read/{VersionId}/{Book:int}/{Chapter:int}"
+@page "/read/{VersionId}/{Book:int}/{Chapter:int}/{Verse:int}"
+@inject IMediator Mediator
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>@_title</PageTitle>
+
+@if (_loading)
+{
+    <LoadingSpinner />
+}
+else if (_emptyLibrary)
+{
+    <section class="panel">
+        <h1>No Bible yet</h1>
+        <p class="muted">Import a .yes translation, or restart to restore the sample excerpts.</p>
+        <a class="primary-btn" href="import">Import</a>
+    </section>
+}
+else
+{
+    <div class="reader-toolbar">
+        <button type="button" class="book-jump" @onclick="() => _selectorOpen = true">@Heading</button>
+        <div class="reader-nav">
+            <button type="button" class="text-btn" @onclick="GoPrevious" disabled="@(!_canGoPrevious)">Prev</button>
+            <button type="button" class="text-btn" @onclick="GoNext" disabled="@(!_canGoNext)">Next</button>
+        </div>
+    </div>
+    @if (_result is { IsSuccess: true, Value: not null })
+    {
+        <div class="reader-surface" @onpointerdown="OnPointerDown" @onpointerup="OnPointerUp">
+            <ChapterView Chapter="_result.Value" OnVerseSelected="OpenVerse" />
+        </div>
+    }
+    else
+    {
+        <ErrorDisplay Message="@(_result?.Error ?? "This chapter is not in the installed text.")" />
+        <p class="muted">The sample translation only includes a few passages. Choose another chapter, or import a full .yes file.</p>
+    }
+}
+
+<BookSelector IsOpen="_selectorOpen"
+              Books="_books"
+              CurrentBook="(BookId)Book"
+              CurrentChapter="Chapter"
+              OnClose="CloseSelector"
+              OnSelected="OnBookSelected" />
+
+<VerseActionSheet VersionId="@VersionId"
+                  BookName="@(_result?.Value?.BookName ?? string.Empty)"
+                  BookId="(BookId)Book"
+                  Chapter="Chapter"
+                  Verse="_selectedVerse"
+                  OnClose="CloseVerse"
+                  OnChanged="Reload" />
+
+@code {
+    [Parameter] public string? VersionId { get; set; }
+    [Parameter] public int Book { get; set; }
+    [Parameter] public int Chapter { get; set; }
+    [Parameter] public int Verse { get; set; }
+
+    private Result<ChapterDto>? _result;
+    private IReadOnlyList<BookListItemDto> _books = [];
+    private VerseDto? _selectedVerse;
+    private bool _loading = true;
+    private bool _emptyLibrary;
+    private bool _selectorOpen;
+    private bool _canGoNext;
+    private bool _canGoPrevious;
+    private bool _swiped;
+    private double _startX;
+    private double _startY;
+    private int? _pendingScroll;
+    private string _title = "OpenBible";
+
+    private string Heading => _result is { IsSuccess: true, Value: not null }
+        ? $"{_result.Value.BookName} {_result.Value.ChapterNumber}"
+        : $"{BookName((BookId)Book)} {Chapter}";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _emptyLibrary = false;
+        if (_result is null)
+        {
+            _loading = true;
+        }
+
+        if (string.IsNullOrWhiteSpace(VersionId))
+        {
+            await RedirectHomeAsync();
+            return;
+        }
+
+        var booksResult = await Mediator.Send(new GetBookListQuery());
+        _books = booksResult.IsSuccess && booksResult.Value is not null
+            ? booksResult.Value
+            : [];
+
+        await LoadChapterAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pendingScroll is not int verse)
+        {
+            return;
+        }
+
+        _pendingScroll = null;
+        await JS.InvokeVoidAsync("openBibleScrollTo", $"verse-{verse}");
+    }
+
+    private async Task RedirectHomeAsync()
+    {
+        var versions = await Mediator.Send(new GetInstalledVersionsQuery());
+        var versionId = versions.IsSuccess ? versions.Value?.FirstOrDefault()?.Id : null;
+        if (versionId is null)
+        {
+            _emptyLibrary = true;
+            _loading = false;
+            _title = "OpenBible";
+            return;
+        }
+
+        var position = await Mediator.Send(new GetReadingPositionQuery(versionId));
+        if (position.IsSuccess && position.Value is not null)
+        {
+            var saved = position.Value;
+            Navigation.NavigateTo($"/read/{versionId}/{(int)saved.BookId}/{saved.Chapter}/{saved.Verse}", replace: true);
+            return;
+        }
+
+        Navigation.NavigateTo($"/read/{versionId}/0/1", replace: true);
+    }
+
+    private async Task LoadChapterAsync()
+    {
+        _result = await Mediator.Send(new GetChapterQuery(VersionId!, (BookId)Book, Chapter));
+        if (_result is { IsSuccess: true, Value: not null })
+        {
+            _title = $"{_result.Value.BookName} {_result.Value.ChapterNumber}";
+            var verse = Verse > 0 ? Verse : 1;
+            await Mediator.Send(new SaveReadingPositionCommand(VersionId!, (BookId)Book, Chapter, verse));
+            if (Verse > 0)
+            {
+                _pendingScroll = Verse;
+            }
+
+            if (_selectedVerse is not null)
+            {
+                _selectedVerse = _result.Value.Verses.FirstOrDefault(item => item.VerseNumber == _selectedVerse.VerseNumber);
+            }
+        }
+        else
+        {
+            _title = "Chapter unavailable";
+        }
+
+        UpdateNavigation();
+        _loading = false;
+    }
+
+    private async Task Reload()
+    {
+        await LoadChapterAsync();
+    }
+
+    private string BookName(BookId book)
+    {
+        var match = _books.FirstOrDefault(item => item.BookId == book);
+        return match?.FullName ?? "Reading";
+    }
+
+    private void UpdateNavigation()
+    {
+        var index = IndexOfBook((BookId)Book);
+        if (index < 0 || _books.Count == 0)
+        {
+            _canGoNext = false;
+            _canGoPrevious = false;
+            return;
+        }
+
+        var current = _books[index];
+        _canGoNext = Chapter < current.ChapterCount || index < _books.Count - 1;
+        _canGoPrevious = Chapter > 1 || index > 0;
+    }
+
+    private int IndexOfBook(BookId book)
+    {
+        for (var i = 0; i < _books.Count; i++)
+        {
+            if (_books[i].BookId == book)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    private void GoNext()
+    {
+        var index = IndexOfBook((BookId)Book);
+        if (index < 0)
+        {
+            return;
+        }
+
+        var current = _books[index];
+        if (Chapter < current.ChapterCount)
+        {
+            Navigate((BookId)Book, Chapter + 1);
+            return;
+        }
+
+        if (index < _books.Count - 1)
+        {
+            Navigate(_books[index + 1].BookId, 1);
+        }
+    }
+
+    private void GoPrevious()
+    {
+        if (Chapter > 1)
+        {
+            Navigate((BookId)Book, Chapter - 1);
+            return;
+        }
+
+        var index = IndexOfBook((BookId)Book);
+        if (index > 0)
+        {
+            var previous = _books[index - 1];
+            Navigate(previous.BookId, previous.ChapterCount);
+        }
+    }
+
+    private void Navigate(BookId book, int chapter)
+    {
+        Navigation.NavigateTo($"/read/{VersionId}/{(int)book}/{chapter}");
+    }
+
+    private Task CloseSelector()
+    {
+        _selectorOpen = false;
+        return Task.CompletedTask;
+    }
+
+    private Task OnBookSelected((BookId Book, int Chapter) selection)
+    {
+        _selectorOpen = false;
+        Navigate(selection.Book, selection.Chapter);
+        return Task.CompletedTask;
+    }
+
+    private Task CloseVerse()
+    {
+        _selectedVerse = null;
+        return Task.CompletedTask;
+    }
+
+    private void OpenVerse(VerseDto verse)
+    {
+        if (_swiped)
+        {
+            _swiped = false;
+            return;
+        }
+
+        _selectedVerse = verse;
+    }
+
+    private void OnPointerDown(PointerEventArgs e)
+    {
+        _startX = e.ClientX;
+        _startY = e.ClientY;
+    }
+
+    private void OnPointerUp(PointerEventArgs e)
+    {
+        var dx = e.ClientX - _startX;
+        var dy = e.ClientY - _startY;
+        if (Math.Abs(dx) < 70 || Math.Abs(dx) < Math.Abs(dy))
+        {
+            return;
+        }
+
+        _swiped = true;
+        if (dx < 0 && _canGoNext)
+        {
+            GoNext();
+        }
+        else if (dx > 0 && _canGoPrevious)
+        {
+            GoPrevious();
+        }
+    }
+}

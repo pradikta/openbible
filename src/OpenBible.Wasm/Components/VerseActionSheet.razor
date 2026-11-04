@@ -1,0 +1,107 @@
+@inject IMediator Mediator
+@inject IJSRuntime JS
+
+@if (Verse is not null)
+{
+    <div class="sheet-backdrop" @onclick="CloseAsync"></div>
+    <div class="sheet" role="dialog" aria-label="Verse actions">
+        <div class="sheet-head">
+            <strong>@BookName @Chapter:@Verse.VerseNumber</strong>
+            <button type="button" class="text-btn" @onclick="CloseAsync">Close</button>
+        </div>
+        <p class="verse-sheet-text">@Verse.Text</p>
+        @if (Verse.Footnotes is { Count: > 0 })
+        {
+            <ol>
+                @foreach (var note in Verse.Footnotes)
+                {
+                    <li>@note</li>
+                }
+            </ol>
+        }
+        <div class="color-row">
+            @foreach (var color in Enum.GetValues<HighlightColor>())
+            {
+                <button type="button"
+                        class="swatch @color.ToString().ToLowerInvariant() @(Verse.Highlight == color ? "selected" : null)"
+                        aria-label="@color highlight"
+                        @onclick="() => Highlight(color)"></button>
+            }
+        </div>
+        <div class="row-actions">
+            <button type="button" class="text-btn" @onclick="ToggleBookmark">@(Verse.IsBookmarked ? "Remove bookmark" : "Bookmark")</button>
+            <button type="button" class="text-btn" @onclick="Copy">Copy</button>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(_status))
+        {
+            <p class="muted">@_status</p>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string VersionId { get; set; } = string.Empty;
+    [Parameter] public string BookName { get; set; } = string.Empty;
+    [Parameter] public BookId BookId { get; set; }
+    [Parameter] public int Chapter { get; set; }
+    [Parameter] public VerseDto? Verse { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private string? _status;
+
+    private async Task Highlight(HighlightColor color)
+    {
+        if (Verse is null)
+        {
+            return;
+        }
+
+        var result = await Mediator.Send(new SetVerseHighlightCommand(VersionId, BookId, Chapter, Verse.VerseNumber, color));
+        _status = result.IsSuccess
+            ? (result.Value ? "Highlight saved." : "Highlight removed.")
+            : result.Error;
+        if (result.IsSuccess && OnChanged.HasDelegate)
+        {
+            await OnChanged.InvokeAsync();
+        }
+    }
+
+    private async Task ToggleBookmark()
+    {
+        if (Verse is null)
+        {
+            return;
+        }
+
+        var result = await Mediator.Send(new ToggleBookmarkCommand(VersionId, BookId, Chapter, Verse.VerseNumber));
+        _status = result.IsSuccess
+            ? (result.Value!.IsBookmarked ? "Bookmark saved." : "Bookmark removed.")
+            : result.Error;
+        if (result.IsSuccess && OnChanged.HasDelegate)
+        {
+            await OnChanged.InvokeAsync();
+        }
+    }
+
+    private async Task Copy()
+    {
+        if (Verse is null)
+        {
+            return;
+        }
+
+        var text = $"{BookName} {Chapter}:{Verse.VerseNumber} {Verse.Text}";
+        await JS.InvokeVoidAsync("openBibleCopy", text);
+        _status = "Copied.";
+    }
+
+    private async Task CloseAsync()
+    {
+        _status = null;
+        if (OnClose.HasDelegate)
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+}

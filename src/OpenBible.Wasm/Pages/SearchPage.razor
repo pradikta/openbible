@@ -1,0 +1,135 @@
+@page "/search"
+@inject IMediator Mediator
+@inject NavigationManager Navigation
+
+<PageTitle>Search</PageTitle>
+
+<section class="panel">
+    <h1>Search</h1>
+    <label class="muted" for="version">Translation</label>
+    <select id="version" class="file-field" @bind="_versionId" @bind:after="ClearResults">
+        @foreach (var version in _versions)
+        {
+            <option value="@version.Id">@version.Title</option>
+        }
+    </select>
+
+    <div class="search-box" style="margin-top: 0.75rem;">
+        <input id="query" placeholder="Search the installed text" value="@_query" @oninput="OnQueryInput" />
+    </div>
+
+    <div class="scope-row">
+        <button type="button" class="@(_scope == "all" ? "on" : null)" @onclick='() => SetScope("all")'>All</button>
+        <button type="button" class="@(_scope == "ot" ? "on" : null)" @onclick='() => SetScope("ot")'>Old Testament</button>
+        <button type="button" class="@(_scope == "nt" ? "on" : null)" @onclick='() => SetScope("nt")'>New Testament</button>
+        <button type="button" class="@(_scope == "book" ? "on" : null)" @onclick='() => SetScope("book")'>Current book</button>
+    </div>
+
+    @if (_loading)
+    {
+        <LoadingSpinner />
+    }
+    else if (_error is not null)
+    {
+        <ErrorDisplay Message="@_error" />
+    }
+    else if (_results is not null)
+    {
+        <SearchResultList Query="@_query" Results="_results" OnOpen="OpenResult" />
+    }
+</section>
+
+@code {
+    private IReadOnlyList<BibleVersionDto> _versions = [];
+    private IReadOnlyList<SearchResultDto>? _results;
+    private string _versionId = string.Empty;
+    private string _query = string.Empty;
+    private string _scope = "all";
+    private string? _error;
+    private bool _loading;
+    private BookId _currentBook = BookId.Genesis;
+    private CancellationTokenSource? _searchCts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var versions = await Mediator.Send(new GetInstalledVersionsQuery());
+        _versions = versions.IsSuccess && versions.Value is not null ? versions.Value : [];
+        _versionId = _versions.FirstOrDefault()?.Id ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(_versionId))
+        {
+            var position = await Mediator.Send(new GetReadingPositionQuery(_versionId));
+            if (position.IsSuccess && position.Value is not null)
+            {
+                _currentBook = position.Value.BookId;
+            }
+        }
+    }
+
+    private async Task OnQueryInput(ChangeEventArgs e)
+    {
+        _query = e.Value?.ToString() ?? string.Empty;
+        _searchCts?.Cancel();
+        _searchCts?.Dispose();
+        _searchCts = new CancellationTokenSource();
+        var token = _searchCts.Token;
+
+        try
+        {
+            await Task.Delay(300, token);
+            await RunSearchAsync();
+        }
+        catch (TaskCanceledException)
+        {
+        }
+    }
+
+    private async Task SetScope(string scope)
+    {
+        _scope = scope;
+        if (!string.IsNullOrWhiteSpace(_query))
+        {
+            await RunSearchAsync();
+        }
+    }
+
+    private void ClearResults()
+    {
+        _results = null;
+        _error = null;
+    }
+
+    private async Task RunSearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_versionId) || string.IsNullOrWhiteSpace(_query))
+        {
+            _results = null;
+            _error = string.IsNullOrWhiteSpace(_versionId) ? "Install a translation before searching." : null;
+            return;
+        }
+
+        _loading = true;
+        _error = null;
+        Testament? testament = _scope switch
+        {
+            "ot" => Testament.OldTestament,
+            "nt" => Testament.NewTestament,
+            _ => null
+        };
+        BookId? book = _scope == "book" ? _currentBook : null;
+        var result = await Mediator.Send(new SearchBibleQuery(_versionId, _query, testament, book));
+        _loading = false;
+        if (result.IsSuccess && result.Value is not null)
+        {
+            _results = result.Value;
+            return;
+        }
+
+        _results = null;
+        _error = result.Error;
+    }
+
+    private void OpenResult(SearchResultDto result)
+    {
+        Navigation.NavigateTo($"/read/{result.VersionId}/{(int)result.BookId}/{result.Chapter}/{result.Verse}");
+    }
+}

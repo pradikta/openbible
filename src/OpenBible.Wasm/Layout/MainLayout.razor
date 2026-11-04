@@ -1,16 +1,74 @@
 ﻿@inherits LayoutComponentBase
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+@implements IDisposable
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
+<div class="app-shell">
+    <header class="app-header">
+        <span class="brand">OpenBible</span>
+        <button type="button" class="theme-btn" @onclick="CycleTheme">@ThemeLabel</button>
+    </header>
 
-        <article class="content px-4">
-            @Body
-        </article>
+    <main class="app-content">
+        <ErrorBoundary @ref="_errorBoundary">
+            <ChildContent>
+                @Body
+            </ChildContent>
+            <ErrorContent Context="exception">
+                <ErrorDisplay Message="@exception.Message" />
+            </ErrorContent>
+        </ErrorBoundary>
     </main>
+
+    <NavMenu />
 </div>
+
+@code {
+    private ErrorBoundary? _errorBoundary;
+    private string _theme = "system";
+
+    private string ThemeLabel => _theme switch
+    {
+        "dark" => "Dark",
+        "light" => "Light",
+        _ => "Auto"
+    };
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        _theme = await JS.InvokeAsync<string>("openBibleTheme.get");
+        StateHasChanged();
+    }
+
+    private async Task CycleTheme()
+    {
+        _theme = _theme switch
+        {
+            "system" => "dark",
+            "dark" => "light",
+            _ => "system"
+        };
+
+        await JS.InvokeVoidAsync("openBibleTheme.set", _theme);
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _errorBoundary?.Recover();
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}

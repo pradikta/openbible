@@ -1,41 +1,15 @@
-<div class="verse-row @GetHighlightClass()" @onclick="HandleClick">
+<div id="@ElementId" class="verse-row @GetHighlightClass() @(Verse.IsBookmarked ? "is-bookmarked" : null)" @onclick="HandleClick">
     <span class="verse-num">@Verse.VerseNumber</span>
     <span class="verse-text">@Verse.Text</span>
+    @if (Verse.Footnotes is { Count: > 0 })
+    {
+        <sup class="verse-fn" title="Footnote">*</sup>
+    }
 </div>
-
-<style>
-    .verse-row {
-        padding: 0.25rem 0.5rem;
-        margin: 0.125rem 0;
-        border-radius: 4px;
-        line-height: 1.7;
-        font-size: 1.05rem;
-        cursor: pointer;
-        transition: background-color 0.15s ease;
-    }
-    .verse-row:hover {
-        background-color: rgba(0, 0, 0, 0.03);
-    }
-    .verse-num {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: #9ca3af;
-        vertical-align: super;
-        margin-right: 0.35rem;
-        user-select: none;
-    }
-    .verse-text {
-        color: #1f2937;
-    }
-    .hl-yellow { background-color: #fef08a; }
-    .hl-green  { background-color: #bbf7d0; }
-    .hl-blue   { background-color: #bfdbfe; }
-    .hl-pink   { background-color: #fbcfe8; }
-    .hl-purple { background-color: #e9d5ff; }
-</style>
 
 @code {
     [Parameter, EditorRequired] public VerseDto Verse { get; set; } = default!;
+    [Parameter] public string? ElementId { get; set; }
     [Parameter] public EventCallback<VerseDto> OnVerseClick { get; set; }
 
     private string GetHighlightClass() => Verse.Highlight switch

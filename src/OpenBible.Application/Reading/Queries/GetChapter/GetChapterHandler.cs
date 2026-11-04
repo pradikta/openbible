@@ -1,6 +1,7 @@
 using MediatR;
 using OpenBible.Application.Common.Models;
 using OpenBible.Application.Reading.DTOs;
+using OpenBible.Domain.Catalog;
 using OpenBible.Domain.Interfaces;
 using OpenBible.Domain.ValueObjects;
 
@@ -40,11 +41,20 @@ public sealed class GetChapterHandler : IRequestHandler<GetChapterQuery, Result<
 
         var highlightMap = highlights.ToDictionary(h => h.Reference.Verse, h => h.Color);
 
+        var bookmarks = _userDataRepository is not null
+            ? await _userDataRepository.GetBookmarksAsync(request.VersionId, ct).ConfigureAwait(false)
+            : Array.Empty<OpenBible.Domain.Entities.Bookmark>();
+
+        var bookmarkedVerses = bookmarks
+            .Where(bookmark => bookmark.Reference.Book == request.BookId && bookmark.Reference.Chapter == request.Chapter)
+            .Select(bookmark => bookmark.Reference.Verse)
+            .ToHashSet();
+
         var verseDtos = verses.Select(v => new VerseDto(
             v.Reference.Verse,
             v.Text,
             v.Reference.ToAri(),
-            IsBookmarked: false,
+            IsBookmarked: bookmarkedVerses.Contains(v.Reference.Verse),
             Highlight: highlightMap.TryGetValue(v.Reference.Verse, out var color) ? color : null,
             Footnotes: v.Footnotes.Select(f => f.Content).ToList()
         )).ToList();
@@ -57,7 +67,7 @@ public sealed class GetChapterHandler : IRequestHandler<GetChapterQuery, Result<
 
         var chapterDto = new ChapterDto(
             request.BookId,
-            request.BookId.ToString(),
+            BibleBookCatalog.Get(request.BookId).FullName,
             request.Chapter,
             verseDtos,
             pericopeDtos

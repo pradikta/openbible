@@ -3,17 +3,30 @@
 
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>OpenBible.Wasm</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#1e3a5f" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="OpenBible" />
+    <title>OpenBible</title>
     <base href="/" />
     <link rel="preload" id="webassembly" />
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="css/openbible.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
     <link href="OpenBible.Wasm.styles.css" rel="stylesheet" />
     <link href="manifest.webmanifest" rel="manifest" />
     <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png" />
     <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png" />
+    <script>
+        (function () {
+            var theme = localStorage.getItem("ob-theme");
+            if (theme === "light" || theme === "dark") {
+                document.documentElement.dataset.theme = theme;
+            }
+        })();
+    </script>
     <script type="importmap"></script>
 </head>
 
@@ -32,6 +45,32 @@
         <span class="dismiss">🗙</span>
     </div>
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
+    <script>
+        window.openBibleTheme = {
+            get: function () {
+                return localStorage.getItem("ob-theme") || "system";
+            },
+            set: function (value) {
+                if (!value || value === "system") {
+                    localStorage.removeItem("ob-theme");
+                    delete document.documentElement.dataset.theme;
+                    return;
+                }
+
+                localStorage.setItem("ob-theme", value);
+                document.documentElement.dataset.theme = value;
+            }
+        };
+        window.openBibleCopy = function (text) {
+            return navigator.clipboard.writeText(text);
+        };
+        window.openBibleScrollTo = function (id) {
+            var el = document.getElementById(id);
+            if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+        };
+    </script>
     <script>navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' });</script>
 </body>
 

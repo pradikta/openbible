@@ -1,0 +1,95 @@
+@page "/import"
+@inject IMediator Mediator
+@inject NavigationManager Navigation
+
+<PageTitle>Import</PageTitle>
+
+<section class="panel">
+    <h1>Import</h1>
+    <p class="muted">Add a .yes or .yes.gz translation. Parsing and storage stay on this device.</p>
+    <InputFile OnChange="OnFileSelected" accept=".yes,.gz,application/gzip" class="file-field" />
+
+    @if (_busy)
+    {
+        <LoadingSpinner />
+    }
+    else if (_preview is { IsSuccess: true, Value: not null })
+    {
+        <article class="version-card">
+            <strong>@_preview.Value.Title</strong>
+            <p class="muted">@_preview.Value.Language · @_preview.Value.TotalBooks books</p>
+            @if (!string.IsNullOrWhiteSpace(_preview.Value.Description))
+            {
+                <p>@_preview.Value.Description</p>
+            }
+            <div class="row-actions">
+                <button type="button" class="primary-btn" @onclick="ImportAsync">Import</button>
+            </div>
+        </article>
+    }
+    else if (_preview is { IsFailure: true })
+    {
+        <ErrorDisplay Message="@_preview.Error" />
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_importError))
+    {
+        <ErrorDisplay Message="@_importError" />
+    }
+</section>
+
+@code {
+    private const long MaxBytes = 64L * 1024L * 1024L;
+
+    private IBrowserFile? _file;
+    private Result<BibleVersionDto>? _preview;
+    private string? _importError;
+    private bool _busy;
+
+    private async Task OnFileSelected(InputFileChangeEventArgs args)
+    {
+        _file = args.File;
+        _importError = null;
+        _busy = true;
+        await using var stream = await OpenSeekableAsync(_file);
+        _preview = await Mediator.Send(new PreviewYesFileQuery(stream, _file.Name));
+        _busy = false;
+    }
+
+    private async Task ImportAsync()
+    {
+        if (_file is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _importError = null;
+        await using var stream = await OpenSeekableAsync(_file);
+        var result = await Mediator.Send(new ImportYesFileCommand(stream, _file.Name));
+        _busy = false;
+
+        if (result.IsSuccess && result.Value is not null)
+        {
+            Navigation.NavigateTo($"/read/{result.Value.Id}/0/1");
+            return;
+        }
+
+        _importError = result.Error ?? "Import failed.";
+    }
+
+    private static async Task<Stream> OpenSeekableAsync(IBrowserFile file)
+    {
+        var browserStream = file.OpenReadStream(MaxBytes);
+        if (browserStream.CanSeek)
+        {
+            return browserStream;
+        }
+
+        var buffer = new MemoryStream();
+        await browserStream.CopyToAsync(buffer);
+        await browserStream.DisposeAsync();
+        buffer.Position = 0;
+        return buffer;
+    }
+}

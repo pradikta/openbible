@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 using OpenBible.Application;
 using OpenBible.Infrastructure;
+using OpenBible.Infrastructure.Persistence;
 using OpenBible.Wasm;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -14,4 +16,6 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure();
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+await host.Services.GetRequiredService<SampleScriptureSeeder>().EnsureSeededAsync();
+await host.RunAsync();

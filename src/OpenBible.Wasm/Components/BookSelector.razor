@@ -1,0 +1,95 @@
+@if (IsOpen)
+{
+    <div class="sheet-backdrop" @onclick="CloseAsync"></div>
+    <div class="sheet" role="dialog" aria-label="Choose a passage">
+        <div class="sheet-head">
+            <h2>@(_pickingChapter ? _selected?.FullName : "Books")</h2>
+            <button type="button" class="text-btn" @onclick="CloseOrBack">@(_pickingChapter ? "Books" : "Close")</button>
+        </div>
+
+        @if (!_pickingChapter)
+        {
+            <div class="tabs">
+                <button type="button" class="@(_testament == Testament.OldTestament ? "on" : null)" @onclick="() => _testament = Testament.OldTestament">Old Testament</button>
+                <button type="button" class="@(_testament == Testament.NewTestament ? "on" : null)" @onclick="() => _testament = Testament.NewTestament">New Testament</button>
+            </div>
+            <div class="book-grid">
+                @foreach (var book in VisibleBooks)
+                {
+                    <button type="button" class="@(book.BookId == CurrentBook ? "current" : null)" @onclick="() => PickBook(book)">@book.ShortName</button>
+                }
+            </div>
+        }
+        else if (_selected is not null)
+        {
+            <div class="chapter-grid">
+                @for (var number = 1; number <= _selected.ChapterCount; number++)
+                {
+                    var chapter = number;
+                    <button type="button" class="@(chapter == CurrentChapter && _selected.BookId == CurrentBook ? "current" : null)" @onclick="() => Choose(chapter)">@chapter</button>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public IReadOnlyList<BookListItemDto> Books { get; set; } = [];
+    [Parameter] public BookId CurrentBook { get; set; }
+    [Parameter] public int CurrentChapter { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<(BookId Book, int Chapter)> OnSelected { get; set; }
+
+    private Testament _testament = Testament.OldTestament;
+    private bool _pickingChapter;
+    private BookListItemDto? _selected;
+
+    private IEnumerable<BookListItemDto> VisibleBooks => Books.Where(book => book.Testament == _testament);
+
+    protected override void OnParametersSet()
+    {
+        var current = Books.FirstOrDefault(book => book.BookId == CurrentBook);
+        if (current is not null && !_pickingChapter)
+        {
+            _testament = current.Testament;
+        }
+    }
+
+    private void PickBook(BookListItemDto book)
+    {
+        _selected = book;
+        _pickingChapter = true;
+    }
+
+    private async Task Choose(int chapter)
+    {
+        if (_selected is null)
+        {
+            return;
+        }
+
+        _pickingChapter = false;
+        await OnSelected.InvokeAsync((_selected.BookId, chapter));
+    }
+
+    private async Task CloseOrBack()
+    {
+        if (_pickingChapter)
+        {
+            _pickingChapter = false;
+            return;
+        }
+
+        await CloseAsync();
+    }
+
+    private async Task CloseAsync()
+    {
+        _pickingChapter = false;
+        if (OnClose.HasDelegate)
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+}
