@@ -29,3 +29,5 @@ build_output.txt
 ## Infrastructure generated code
 src/OpenBible.Infrastructure/IndexedDb/
 src/OpenBible.Wasm/wwwroot/interop/
+
+node_modules/

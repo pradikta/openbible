@@ -1,0 +1,474 @@
+@import "tailwindcss";
+
+/* Scan Razor markup (the CLI also needs the scoped components and pages). */
+@source "../Layout";
+@source "../Pages";
+@source "../Components";
+@source "../wwwroot/index.html";
+
+/*
+ * Theme tokens. The --ob-* variables switch between light and dark (system preference
+ * or the data-theme attribute set by the theme button), so utilities such as bg-surface
+ * follow the theme without dark: variants.
+ */
+@theme inline {
+    --color-bg: var(--ob-bg);
+    --color-surface: var(--ob-surface);
+    --color-ink: var(--ob-text);
+    --color-muted: var(--ob-muted);
+    --color-accent: var(--ob-accent);
+    --color-accent-soft: var(--ob-accent-soft);
+    --color-line: var(--ob-border);
+    --color-danger: var(--ob-danger);
+    --color-danger-soft: var(--ob-danger-bg);
+    --color-header: var(--ob-header);
+    --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-serif: Georgia, "Iowan Old Style", Palatino, "Times New Roman", serif;
+    --shadow-sheet: var(--ob-shadow);
+}
+
+:root {
+    --ob-bg: #f6f3ee;
+    --ob-surface: #fffdf9;
+    --ob-text: #1c1917;
+    --ob-muted: #78716c;
+    --ob-accent: #1e3a5f;
+    --ob-accent-soft: #e7eef6;
+    --ob-border: #e7e5e4;
+    --ob-danger: #991b1b;
+    --ob-danger-bg: #fef2f2;
+    --ob-header: rgba(255, 253, 249, 0.92);
+    --ob-shadow: 0 12px 40px rgba(28, 25, 23, 0.16);
+    --ob-on-accent: #f8fafc;
+    color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --ob-bg: #141210;
+        --ob-surface: #1c1917;
+        --ob-text: #f5f5f4;
+        --ob-muted: #a8a29e;
+        --ob-accent: #93c5fd;
+        --ob-accent-soft: #1e293b;
+        --ob-border: #44403c;
+        --ob-danger: #fecaca;
+        --ob-danger-bg: #3f1d1d;
+        --ob-header: rgba(28, 25, 23, 0.92);
+        --ob-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+        --ob-on-accent: #0f172a;
+        color-scheme: dark;
+    }
+}
+
+:root[data-theme="dark"] {
+    --ob-bg: #141210;
+    --ob-surface: #1c1917;
+    --ob-text: #f5f5f4;
+    --ob-muted: #a8a29e;
+    --ob-accent: #93c5fd;
+    --ob-accent-soft: #1e293b;
+    --ob-border: #44403c;
+    --ob-danger: #fecaca;
+    --ob-danger-bg: #3f1d1d;
+    --ob-header: rgba(28, 25, 23, 0.92);
+    --ob-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    --ob-on-accent: #0f172a;
+    color-scheme: dark;
+}
+
+@theme inline {
+    --color-on-accent: var(--ob-on-accent);
+}
+
+@layer base {
+    html,
+    body {
+        @apply bg-bg font-sans text-ink antialiased;
+    }
+
+    a {
+        @apply text-accent underline-offset-2;
+    }
+
+    h1,
+    h2,
+    h3 {
+        @apply font-semibold tracking-tight;
+    }
+
+    h1:focus {
+        outline: none;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+        font: inherit;
+    }
+
+    :focus-visible {
+        @apply outline-2 outline-offset-2 outline-accent;
+    }
+
+    ::selection {
+        @apply bg-accent-soft;
+    }
+}
+
+@layer components {
+    /* Buttons */
+    .primary-btn,
+    .danger-btn,
+    .text-btn,
+    .icon-btn,
+    .theme-btn {
+        @apply inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-full border border-line bg-surface px-4 py-2 text-sm font-medium text-ink no-underline transition hover:bg-accent-soft active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
+    }
+
+    .primary-btn {
+        @apply border-transparent bg-accent text-on-accent shadow-sm hover:bg-accent hover:opacity-90;
+    }
+
+    a.primary-btn {
+        @apply text-on-accent;
+    }
+
+    .danger-btn {
+        @apply text-danger hover:bg-danger-soft;
+    }
+
+    .text-btn {
+        @apply border-transparent bg-transparent;
+    }
+
+    .icon-btn {
+        @apply size-10 px-0;
+    }
+
+    .theme-btn {
+        @apply px-3 py-1.5 text-xs;
+    }
+
+    /* Page structure */
+    .panel {
+        @apply py-4;
+    }
+
+    .panel h1,
+    .reader-toolbar h1 {
+        @apply mb-1 mt-2 text-2xl;
+    }
+
+    .panel h2 {
+        @apply mb-2 mt-8 text-lg;
+    }
+
+    .muted {
+        @apply text-sm text-muted;
+    }
+
+    .error-text {
+        @apply text-danger;
+    }
+
+    .row-actions {
+        @apply mt-4 flex flex-wrap items-center gap-2;
+    }
+
+    /* Cards and lists */
+    .version-card,
+    .result-card,
+    .bookmark-row {
+        @apply my-3 block w-full rounded-2xl border border-line bg-surface p-4 text-left text-ink shadow-sm;
+    }
+
+    button.result-card,
+    a.result-card,
+    button.bookmark-row {
+        @apply cursor-pointer transition hover:border-accent;
+    }
+
+    .version-card.active {
+        @apply border-accent ring-1 ring-accent;
+    }
+
+    .version-card strong {
+        @apply text-base;
+    }
+
+    .default-badge {
+        @apply ml-2 inline-block rounded-full bg-accent px-2.5 py-0.5 align-middle text-xs font-medium text-on-accent;
+    }
+
+    .catalog-item {
+        @apply my-2 flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4;
+    }
+
+    .catalog-actions {
+        @apply flex shrink-0 flex-col items-end gap-1.5;
+    }
+
+    .catalog-item .primary-btn {
+        @apply shrink-0;
+    }
+
+    .more-list {
+        @apply divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface;
+    }
+
+    .more-list a {
+        @apply flex items-center justify-between px-4 py-3.5 text-ink no-underline transition hover:bg-accent-soft;
+    }
+
+    .more-list a::after {
+        content: "\203A";
+        @apply text-xl text-muted;
+    }
+
+    .plan-card,
+    .compare-item,
+    .marker-row {
+        @apply border-b border-line py-3;
+    }
+
+    .marker-row {
+        @apply flex items-center justify-between gap-3;
+    }
+
+    .plan-days {
+        @apply divide-y divide-line;
+    }
+
+    .plan-days li {
+        @apply py-2;
+    }
+
+    .plan-reading {
+        @apply ml-6 block text-sm text-muted;
+    }
+
+    /* Forms */
+    .goto-row,
+    .inline-form,
+    .search-box {
+        @apply my-2 flex items-center gap-2;
+    }
+
+    .goto-row input,
+    .search-box input,
+    .catalog-search,
+    .file-field,
+    .version-select,
+    .study-box textarea,
+    .setting-row select,
+    .setting-row input[type="text"] {
+        @apply w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-ink placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30;
+    }
+
+    .version-select {
+        @apply w-auto rounded-lg px-2.5 py-1.5 text-sm;
+    }
+
+    .file-field {
+        @apply my-3 cursor-pointer text-sm file:mr-3 file:cursor-pointer file:rounded-full file:border-0 file:bg-accent file:px-4 file:py-1.5 file:text-sm file:font-medium file:text-on-accent;
+    }
+
+    .setting-row {
+        @apply my-4 flex flex-col gap-1.5 text-sm font-medium;
+    }
+
+    .verse-preview {
+        @apply rounded-xl border border-line bg-surface p-4;
+    }
+
+    .study-box textarea {
+        @apply min-h-24;
+    }
+
+    /* Reader */
+    .reader-toolbar {
+        @apply my-2 flex items-center justify-between gap-3;
+    }
+
+    .book-jump {
+        @apply cursor-pointer rounded-lg border-0 bg-transparent px-2 py-1 text-lg font-bold text-ink transition hover:bg-accent-soft;
+    }
+
+    .reader-nav {
+        @apply flex items-center gap-1.5;
+    }
+
+    .reader-surface {
+        touch-action: pan-y;
+        @apply rounded-2xl;
+    }
+
+    .mark {
+        @apply rounded bg-amber-200 px-0.5 text-stone-900;
+    }
+
+    /* Chips, tabs and segmented controls */
+    .tabs,
+    .scope-row,
+    .label-chips {
+        @apply my-3 flex flex-wrap gap-1.5;
+    }
+
+    .tabs button,
+    .scope-row button,
+    .chip {
+        @apply cursor-pointer rounded-full border border-line bg-transparent px-3.5 py-1.5 text-sm text-ink transition hover:bg-accent-soft;
+    }
+
+    .tabs button.on,
+    .scope-row button.on,
+    .chip.selected {
+        @apply border-transparent bg-accent-soft font-semibold text-accent;
+    }
+
+    .chip.selected {
+        @apply bg-accent text-on-accent;
+    }
+
+    /* Book and chapter pickers */
+    .book-grid,
+    .chapter-grid,
+    .color-row {
+        @apply grid gap-2;
+    }
+
+    .book-grid {
+        @apply grid-cols-3 sm:grid-cols-4 md:grid-cols-6;
+    }
+
+    .chapter-grid {
+        @apply grid-cols-5 sm:grid-cols-6 md:grid-cols-8;
+    }
+
+    .book-grid button,
+    .chapter-grid button {
+        @apply min-h-10 cursor-pointer rounded-xl border border-line bg-bg px-1 text-sm text-ink transition hover:border-accent;
+    }
+
+    .book-grid button.current,
+    .chapter-grid button.current {
+        @apply border-transparent bg-accent font-semibold text-on-accent;
+    }
+
+    .color-row {
+        @apply my-3 grid-cols-5;
+    }
+
+    .swatch {
+        @apply h-9 cursor-pointer rounded-full border-2 border-transparent;
+    }
+
+    .swatch.yellow { @apply bg-yellow-200; }
+    .swatch.green { @apply bg-green-200; }
+    .swatch.blue { @apply bg-blue-200; }
+    .swatch.pink { @apply bg-pink-200; }
+    .swatch.purple { @apply bg-purple-200; }
+
+    .swatch.selected {
+        @apply border-ink;
+    }
+
+    /* Verse action sheet: bottom sheet on phones, centred card on larger screens */
+    .sheet-backdrop {
+        @apply fixed inset-0 z-40 bg-black/45 backdrop-blur-[1px];
+    }
+
+    .sheet {
+        @apply fixed inset-x-0 bottom-0 z-50 max-h-[min(78dvh,640px)] overflow-auto rounded-t-3xl bg-surface p-5 text-ink shadow-sheet md:inset-x-auto md:bottom-8 md:left-1/2 md:w-full md:max-w-lg md:-translate-x-1/2 md:rounded-3xl;
+        padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+    }
+
+    .sheet-head {
+        @apply flex items-center justify-between gap-2;
+    }
+
+    .sheet-sub {
+        @apply mb-1 mt-3 text-sm font-semibold text-muted;
+    }
+
+    .verse-sheet-text {
+        @apply leading-relaxed;
+    }
+
+    /* App shell */
+    .brand {
+        @apply text-lg font-bold tracking-tight text-accent;
+    }
+
+    .nav-link-item {
+        @apply flex flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 text-[0.7rem] font-semibold text-muted no-underline transition hover:text-ink md:flex-row md:gap-3 md:px-3 md:py-2.5 md:text-sm;
+    }
+
+    .nav-link-item.active {
+        @apply bg-accent-soft text-accent;
+    }
+
+    .nav-link-item svg {
+        @apply size-5 shrink-0 md:size-5;
+    }
+
+    /* Feedback */
+    .error-box {
+        @apply my-4 flex items-start gap-3 rounded-xl border border-line bg-danger-soft p-4 text-danger;
+    }
+
+    .spinner {
+        @apply mb-3 size-9 animate-spin rounded-full border-[3px] border-line border-t-accent;
+    }
+
+    .validation-message {
+        @apply text-sm text-danger;
+    }
+}
+
+/* Blazor framework UI */
+#blazor-error-ui {
+    color-scheme: light only;
+    @apply fixed inset-x-0 bottom-0 z-[1000] hidden bg-yellow-100 px-5 py-3 text-stone-900 shadow-lg;
+}
+
+#blazor-error-ui .dismiss {
+    @apply absolute right-3 top-2 cursor-pointer;
+}
+
+.blazor-error-boundary {
+    @apply rounded-xl bg-red-800 p-4 text-white;
+}
+
+.blazor-error-boundary::after {
+    content: "An error has occurred.";
+}
+
+.loading-progress {
+    @apply absolute inset-x-0 top-[20vh] mx-auto block size-32;
+}
+
+.loading-progress circle {
+    fill: none;
+    stroke: var(--ob-border, #e0e0e0);
+    stroke-width: 0.6rem;
+    transform-origin: 50% 50%;
+    transform: rotate(-90deg);
+}
+
+.loading-progress circle:last-child {
+    stroke: var(--ob-accent, #1e3a5f);
+    stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
+    transition: stroke-dasharray 0.05s ease-in-out;
+}
+
+.loading-progress-text {
+    @apply absolute inset-x-0 text-center font-bold text-muted;
+    top: calc(20vh + 3.25rem);
+}
+
+.loading-progress-text::after {
+    content: var(--blazor-load-percentage-text, "Loading");
+}

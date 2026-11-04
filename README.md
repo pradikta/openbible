@@ -282,6 +282,16 @@ dotnet test --no-build            # all tests, fully offline
 dotnet run --project src/OpenBible.Wasm
 ```
 
+### Styling (Tailwind CSS)
+
+The UI uses Tailwind CSS v4 with a responsive shell (bottom tab bar on phones, sidebar from `md` up). The source is `src/OpenBible.Wasm/Styles/tailwind.css`; the generated `wwwroot/css/tailwind.css` is committed, so building the .NET solution does not need Node. After changing Razor classes or the stylesheet, rebuild it:
+
+```bash
+cd src/OpenBible.Wasm
+npm install        # first time only
+npm run build:css
+```
+
 ## Testing strategy
 
 xUnit, NSubstitute and FluentAssertions. Domain tests cover ARI math and value-object equality; Application tests mock the Domain contracts to test handlers; Infrastructure tests exercise the parser and repositories. No test performs network access.

@@ -1,0 +1,13 @@
+{
+  "name": "openbible-wasm-styles",
+  "private": true,
+  "description": "Tailwind CSS build for OpenBible.Wasm. The generated wwwroot/css/tailwind.css is committed so dotnet build does not need Node.",
+  "scripts": {
+    "build:css": "tailwindcss -i ./Styles/tailwind.css -o ./wwwroot/css/tailwind.css --minify",
+    "watch:css": "tailwindcss -i ./Styles/tailwind.css -o ./wwwroot/css/tailwind.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.0",
+    "tailwindcss": "^4.1.0"
+  }
+}
