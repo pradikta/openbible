@@ -162,22 +162,22 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
 
 - [/] **`.yes` Binary Format Architecture**
 - [x] Document specification in `docs/adr/0003-yes-file-format-spec.md` (layouts verified against upstream readers; local parser gaps recorded).
-  - [/] `YesFileConstants`: Header magic bytes `0x98 0x58` are present; section names still need to match upstream (`versionInfo`, `booksInfo`, `text`, `pericopes`, `xrefs`, `footnotes`).
+  - [x] `YesFileConstants`: Full YES2 signature and upstream section names (`versionInfo`, `booksInfo`, `text`, `pericopes`, `xrefs`, `footnotes`).
   - [x] Implement `BigEndianBinaryReader` wrapping `Stream` with `BinaryPrimitives.Read*BigEndian`.
 - [/] **Section Readers (`Infrastructure/YesFile/SectionReaders/`)**
   - [x] `IYesSectionReader` contract (Open-Closed design).
-  - [ ] `MetadataSectionReader`: parses version title, language, book ordering, text encodings.
+  - [/] Metadata Bintex parsing for title, language, description, and encoding is in `YesFileParser`; extract to `MetadataSectionReader` and complete book ordering separately.
   - [ ] `BookNamesSectionReader`: parses full and short book titles.
-  - [ ] `VerseTextSectionReader`: streams compressed verse text blocks, unpacks chapter offsets.
+  - [/] Uncompressed verse text streams using book/chapter offsets and VarUInt lengths; compressed Snappy blocks remain unsupported.
   - [ ] `PericopeSectionReader`: extracts pericope headings and parallel passage cross-references.
 - [/] **Decompression Engine**
   - [/] Transparent `.yes.gz` GZip stream wrapper (`System.IO.Compression.GZipStream` exists; seek-dependent parsing still needs support).
   - [ ] Managed WASM-compatible Snappy block decompressor for YES2 compressed verse text.
 - [/] **Core Parser**
   - [/] Implement `YesFileParser` implementing `IYesFileReader`:
-    - [x] Validates the YES magic bytes (`0x98 0x58`) in the 8-byte header.
-    - [x] Reads section index table without loading whole file into memory.
-    - [/] Asynchronously yields verses and pericopes section-by-section (iterator exists; format/decompression and section-reader work remain).
+    - [x] Validates the complete YES2 signature and section index bounds.
+    - [x] Reads metadata, book/chapter indexes, and uncompressed verse content without loading the whole file into memory.
+    - [/] Asynchronously yields uncompressed verses; gzip seeking, Snappy text, and pericope payloads remain incomplete.
 - [ ] **Offline Storage Implementations**
   - [ ] `IndexedDbBibleRepository` implementing `IBibleRepository` using client-side IndexedDB interop.
   - [ ] `IndexedDbUserDataRepository` implementing `IUserDataRepository` for bookmarks, highlights, and history.
@@ -186,7 +186,7 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
   - [/] Create `DependencyInjection.cs` with `AddInfrastructure(this IServiceCollection)` registering parser and in-memory repositories/index (browser-persistent storage interop remains unimplemented).
 - [/] **Integration Tests (`OpenBible.Infrastructure.Tests`)**
   - [ ] Create minimal fixture `.yes` test file in `tests/fixtures/sample.yes`.
-  - [/] Test `YesFileParser` header validation and section parsing (header validation is covered; full fixture section parsing remains).
+  - [/] Test `YesFileParser` header validation and section parsing (YES2 section-index fixture and boundary validation are covered; full payload fixture parsing remains).
   - [ ] Test Snappy decompression accuracy against known sample blocks.
   - [x] Test Big-Endian integer reading logic.
 

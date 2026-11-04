@@ -13,42 +13,30 @@ public sealed class YesFileParser : IYesFileReader
     public async Task<BibleVersion> ReadMetadataAsync(Stream stream, CancellationToken ct = default)
     {
         var decompressed = PrepareStream(stream);
-        using var reader = new BigEndianBinaryReader(decompressed, leaveOpen: true);
-
-        ValidateHeader(reader);
-
-        // Header bytes 2..7 indicate format version and flags
-        var versionNumber = reader.ReadInt16();
-        var sectionCount = reader.ReadInt32();
-
-        string title = "Imported Version";
-        string language = "en";
-        string description = string.Empty;
-        var books = new List<Book>();
-
-        for (var i = 0; i < sectionCount; i++)
+        ct.ThrowIfCancellationRequested();
+        var index = Yes2SectionIndex.Read(decompressed);
+        if (!index.TryGetSection(YesFileConstants.Sections.VersionInfo, out var metadataSection) || metadataSection is null)
         {
-            ct.ThrowIfCancellationRequested();
-
-            var sectionName = reader.ReadShortString();
-            var sectionOffset = reader.ReadInt32();
-            var sectionSize = reader.ReadInt32();
-
-            if (sectionName == YesFileConstants.Sections.VersionInfo)
-            {
-                var currentPos = decompressed.Position;
-                if (decompressed.CanSeek)
-                {
-                    decompressed.Seek(sectionOffset, SeekOrigin.Begin);
-                    title = reader.ReadString();
-                    language = reader.ReadShortString();
-                    description = reader.ReadString();
-                    decompressed.Seek(currentPos, SeekOrigin.Begin);
-                }
-            }
+            throw new YesFileCorruptException("YES2 file does not contain versionInfo metadata.");
         }
 
-        var versionId = GenerateVersionId(title);
+        decompressed.Position = metadataSection.ContentOffset;
+        var metadata = BintexValueMapReader.Read(decompressed, metadataSection.ContentSize);
+        var shortName = GetString(metadata, "shortName");
+        var title = GetString(metadata, "longName") ?? shortName ?? "Imported Version";
+        var language = GetString(metadata, "locale") ?? "en";
+        var description = GetString(metadata, "description") ?? string.Empty;
+        var books = ReadBooks(decompressed, index)
+            .Select(static book => new Book(book.BookId, book.ShortName, book.ShortName, book.ChapterCount, book.VerseCounts))
+            .ToList();
+        var declaredBookCount = GetInt(metadata, "book_count", books.Count);
+        if (declaredBookCount != books.Count)
+        {
+            throw new YesFileCorruptException("YES2 versionInfo book_count does not match booksInfo.");
+        }
+
+        var versionId = GenerateVersionId(shortName ?? title);
+        await Task.CompletedTask.ConfigureAwait(false);
         return new BibleVersion(versionId, title, language, description, books);
     }
 
@@ -56,52 +44,60 @@ public sealed class YesFileParser : IYesFileReader
         Stream stream,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
         var decompressed = PrepareStream(stream);
-        using var reader = new BigEndianBinaryReader(decompressed, leaveOpen: true);
-
-        ValidateHeader(reader);
-
-        var versionNumber = reader.ReadInt16();
-        var sectionCount = reader.ReadInt32();
-
-        int verseTextOffset = 0;
-        int verseTextSize = 0;
-
-        for (var i = 0; i < sectionCount; i++)
+        var index = Yes2SectionIndex.Read(decompressed);
+        var metadataSection = GetRequiredSection(index, YesFileConstants.Sections.VersionInfo);
+        decompressed.Position = metadataSection.ContentOffset;
+        var metadata = BintexValueMapReader.Read(decompressed, metadataSection.ContentSize);
+        var textEncoding = GetInt(metadata, "textEncoding", 2);
+        var books = ReadBooks(decompressed, index);
+        var textSection = GetRequiredSection(index, YesFileConstants.Sections.VerseText);
+        if (textSection.AttributesSize > 0)
         {
-            ct.ThrowIfCancellationRequested();
-
-            var sectionName = reader.ReadShortString();
-            var sectionOffset = reader.ReadInt32();
-            var sectionSize = reader.ReadInt32();
-
-            if (sectionName == YesFileConstants.Sections.VerseText)
+            decompressed.Position = textSection.StartOffset;
+            var attributes = BintexValueMapReader.Read(decompressed, textSection.AttributesSize);
+            if (GetString(attributes, "compression.name") is { } compression)
             {
-                verseTextOffset = sectionOffset;
-                verseTextSize = sectionSize;
+                throw new NotSupportedException($"YES2 text compression '{compression}' is not supported yet.");
             }
         }
 
-        if (verseTextOffset > 0 && decompressed.CanSeek)
+        var textEnd = textSection.ContentOffset + textSection.ContentSize;
+        foreach (var book in books)
         {
-            decompressed.Seek(verseTextOffset, SeekOrigin.Begin);
-
-            // Read total verse count
-            var totalVerses = reader.ReadInt32();
-
-            for (var i = 0; i < totalVerses; i++)
+            for (var chapter = 1; chapter <= book.ChapterCount; chapter++)
             {
                 ct.ThrowIfCancellationRequested();
+                var chapterOffset = book.ChapterOffsets[chapter - 1];
+                var chapterPosition = checked(textSection.ContentOffset + book.Offset + chapterOffset);
+                if (chapterPosition < textSection.ContentOffset || chapterPosition >= textEnd)
+                {
+                    throw new YesFileCorruptException("YES2 chapter offset is outside the text section.");
+                }
 
-                var ari = reader.ReadInt32();
-                var text = reader.ReadString();
+                decompressed.Position = chapterPosition;
+                for (var verse = 1; verse <= book.VerseCounts[chapter - 1]; verse++)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var byteLength = BintexValueMapReader.ReadVarUInt(decompressed);
+                    if (byteLength < 0 || byteLength > textEnd - decompressed.Position)
+                    {
+                        throw new YesFileCorruptException("YES2 verse text exceeds the text section boundary.");
+                    }
 
-                var reference = VerseReference.FromAri(ari);
-                yield return new Verse(reference, text);
+                    var textBytes = ReadExactly(decompressed, byteLength);
+                    var text = textEncoding switch
+                    {
+                        1 => System.Text.Encoding.ASCII.GetString(textBytes),
+                        2 => System.Text.Encoding.UTF8.GetString(textBytes),
+                        _ => throw new YesFileCorruptException($"Unsupported YES2 text encoding: {textEncoding}.")
+                    };
+
+                    yield return new Verse(new VerseReference(book.BookId, chapter, verse), text);
+                }
             }
         }
-
-        await Task.CompletedTask;
     }
 
     public async IAsyncEnumerable<Pericope> ReadPericopesAsync(
@@ -109,54 +105,15 @@ public sealed class YesFileParser : IYesFileReader
         [EnumeratorCancellation] CancellationToken ct = default)
     {
         var decompressed = PrepareStream(stream);
-        using var reader = new BigEndianBinaryReader(decompressed, leaveOpen: true);
-
-        ValidateHeader(reader);
-
-        var versionNumber = reader.ReadInt16();
-        var sectionCount = reader.ReadInt32();
-
-        int pericopeOffset = 0;
-
-        for (var i = 0; i < sectionCount; i++)
+        ct.ThrowIfCancellationRequested();
+        var index = Yes2SectionIndex.Read(decompressed);
+        if (index.TryGetSection(YesFileConstants.Sections.Pericope, out var section) && section is not null)
         {
-            ct.ThrowIfCancellationRequested();
-
-            var sectionName = reader.ReadShortString();
-            var sectionOffset = reader.ReadInt32();
-            var sectionSize = reader.ReadInt32();
-
-            if (sectionName == YesFileConstants.Sections.Pericope)
-            {
-                pericopeOffset = sectionOffset;
-            }
+            throw new NotSupportedException("YES2 pericope sections are not supported yet.");
         }
 
-        if (pericopeOffset > 0 && decompressed.CanSeek)
-        {
-            decompressed.Seek(pericopeOffset, SeekOrigin.Begin);
-            var pericopeCount = reader.ReadInt32();
-
-            for (var i = 0; i < pericopeCount; i++)
-            {
-                ct.ThrowIfCancellationRequested();
-
-                var ari = reader.ReadInt32();
-                var title = reader.ReadString();
-                var parallelCount = reader.ReadByte();
-                var parallels = new List<string>(parallelCount);
-
-                for (var p = 0; p < parallelCount; p++)
-                {
-                    parallels.Add(reader.ReadString());
-                }
-
-                var reference = VerseReference.FromAri(ari);
-                yield return new Pericope(reference, title, parallels);
-            }
-        }
-
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
+        yield break;
     }
 
     private static Stream PrepareStream(Stream stream)
@@ -182,16 +139,66 @@ public sealed class YesFileParser : IYesFileReader
         return stream;
     }
 
-    private static void ValidateHeader(BigEndianBinaryReader reader)
+    private static IReadOnlyList<ParsedBook> ReadBooks(Stream stream, Yes2SectionIndex index)
     {
-        var magic0 = reader.ReadByte();
-        var magic1 = reader.ReadByte();
-
-        if (magic0 != YesFileConstants.MagicBytes[0] || magic1 != YesFileConstants.MagicBytes[1])
+        var section = GetRequiredSection(index, YesFileConstants.Sections.BookNames);
+        stream.Position = section.ContentOffset;
+        using var reader = new BigEndianBinaryReader(stream, leaveOpen: true);
+        var count = reader.ReadInt32();
+        if (count < 0 || count > 66)
         {
-            throw new YesFileCorruptException(
-                $"Invalid magic bytes: expected 0x98 0x58, got 0x{magic0:X2} 0x{magic1:X2}");
+            throw new YesFileCorruptException("Invalid YES2 book count.");
         }
+
+        var books = new List<ParsedBook>(count);
+        var sectionEnd = section.ContentOffset + section.ContentSize;
+        for (var i = 0; i < count; i++)
+        {
+            var values = BintexValueMapReader.ReadMap(stream);
+            var bookNumber = GetInt(values, "bookId", -1);
+            if (!Enum.IsDefined(typeof(BookId), bookNumber))
+            {
+                throw new YesFileCorruptException($"Invalid YES2 book ID: {bookNumber}.");
+            }
+
+            var shortName = GetString(values, "shortName") ?? ((BookId)bookNumber).ToString();
+            var chapterCount = GetInt(values, "chapter_count", -1);
+            var verseCounts = GetIntArray(values, "verse_counts");
+            var chapterOffsets = GetIntArray(values, "chapter_offsets");
+            var offset = GetInt(values, "offset", -1);
+            if (chapterCount < 0 || chapterCount > 255 || offset < 0 || verseCounts.Length != chapterCount || chapterOffsets.Length < chapterCount ||
+                verseCounts.Any(static value => value < 0) || chapterOffsets.Any(static value => value < 0))
+            {
+                throw new YesFileCorruptException($"Invalid chapter index for YES2 book '{shortName}'.");
+            }
+
+            books.Add(new ParsedBook((BookId)bookNumber, shortName, offset, chapterCount, verseCounts, chapterOffsets));
+            if (stream.Position > sectionEnd)
+            {
+                throw new YesFileCorruptException("YES2 booksInfo content exceeds its section boundary.");
+            }
+        }
+
+        return books;
+    }
+
+    private static Yes2SectionEntry GetRequiredSection(Yes2SectionIndex index, string name) =>
+        index.TryGetSection(name, out var section) && section is not null
+            ? section
+            : throw new YesFileCorruptException($"YES2 file does not contain the '{name}' section.");
+
+    private static byte[] ReadExactly(Stream stream, int count)
+    {
+        var bytes = new byte[count];
+        var offset = 0;
+        while (offset < count)
+        {
+            var read = stream.Read(bytes, offset, count - offset);
+            if (read == 0) throw new EndOfStreamException("Unexpected end of YES2 verse text.");
+            offset += read;
+        }
+
+        return bytes;
     }
 
     private static string GenerateVersionId(string title)
@@ -199,4 +206,15 @@ public sealed class YesFileParser : IYesFileReader
         var cleaned = new string(title.Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
         return string.IsNullOrWhiteSpace(cleaned) ? "version" : cleaned;
     }
+
+    private static string? GetString(IReadOnlyDictionary<string, object?> values, string key) =>
+        values.TryGetValue(key, out var value) ? value as string : null;
+
+    private static int GetInt(IReadOnlyDictionary<string, object?> values, string key, int defaultValue) =>
+        values.TryGetValue(key, out var value) && value is int integer ? integer : defaultValue;
+
+    private static int[] GetIntArray(IReadOnlyDictionary<string, object?> values, string key) =>
+        values.TryGetValue(key, out var value) && value is int[] integers ? integers : Array.Empty<int>();
+
+    private sealed record ParsedBook(BookId BookId, string ShortName, int Offset, int ChapterCount, int[] VerseCounts, int[] ChapterOffsets);
 }

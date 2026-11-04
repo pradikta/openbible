@@ -7,6 +7,9 @@ public static class YesFileConstants
     /// </summary>
     public static readonly byte[] MagicBytes = [0x98, 0x58];
 
+    /// <summary>Complete eight-byte YES2 signature.</summary>
+    public static readonly byte[] Yes2Header = [0x98, 0x58, 0x0d, 0x0a, 0x00, 0x5d, 0xe0, 0x02];
+
     /// <summary>
     /// Header size in bytes.
     /// </summary>
@@ -17,11 +20,11 @@ public static class YesFileConstants
     /// </summary>
     public static class Sections
     {
-        public const string VersionInfo = "version_info";
-        public const string BookNames = "book_names";
-        public const string VerseText = "verse_text";
-        public const string Pericope = "pericope";
-        public const string CrossReferences = "xref";
-        public const string Footnotes = "footnote";
+        public const string VersionInfo = "versionInfo";
+        public const string BookNames = "booksInfo";
+        public const string VerseText = "text";
+        public const string Pericope = "pericopes";
+        public const string CrossReferences = "xrefs";
+        public const string Footnotes = "footnotes";
     }
 }
