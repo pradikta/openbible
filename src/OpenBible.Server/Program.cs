@@ -9,8 +9,7 @@ builder.Services.AddHttpClient(CatalogDownloadEndpoint.ClientName, client => cli
 
 var app = builder.Build();
 
-app.UseBlazorFrameworkFiles();
-app.UseStaticFiles();
+app.MapStaticAssets();
 app.MapCatalogDownload();
 app.MapFallbackToFile("index.html");
 

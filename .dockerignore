@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+**/node_modules/
+.git/
+.github/
+.vs/
+.vscode/
+docs/
+tests/
+*.log
+build_output.txt
+global.json
+Dockerfile
+docker-compose.yml
+.dockerignore

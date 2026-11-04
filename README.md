@@ -282,6 +282,21 @@ dotnet test --no-build            # all tests, fully offline
 dotnet run --project src/OpenBible.Wasm
 ```
 
+### Docker
+
+One image serves the PWA and the catalog download API (`OpenBible.Server`) on port 8080. The KJV is bundled, so a fresh container is readable offline after the first load.
+
+```bash
+docker compose up --build            # http://localhost:8080 (set OPENBIBLE_PORT to change)
+docker pull ghcr.io/pradikta/openbible:latest
+```
+
+Service workers need HTTPS except on `localhost`, so put the container behind a TLS reverse proxy for real deployments.
+
+### CI and images
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds and tests on every push and pull request. On `main` and `v*` tags it also builds a multi-arch (`amd64`, `arm64`) image and pushes it to `ghcr.io/pradikta/openbible` (`latest`, version tags, short SHA). Pull requests only check that the image builds. The first published package may need its visibility set to public in the repository's package settings.
+
 ### Styling (Tailwind CSS)
 
 The UI uses Tailwind CSS v4 with a responsive shell (bottom tab bar on phones, sidebar from `md` up). The source is `src/OpenBible.Wasm/Styles/tailwind.css`; the generated `wwwroot/css/tailwind.css` is committed, so building the .NET solution does not need Node. After changing Razor classes or the stylesheet, rebuild it:
