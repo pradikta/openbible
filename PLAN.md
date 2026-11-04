@@ -5,10 +5,10 @@
 > Every milestone must pass `dotnet build` and `dotnet test` with zero warnings and zero errors before proceeding.
 >
 > **Progress snapshot (2026-11-04):** Phases 0–2 are substantially implemented; Phase 3 is in progress
-> (the YES2 parser reads metadata, books, text, `snappy-blocks`, pericopes, footnotes, and xrefs, while
-> persistent browser storage is still missing); Phase 4 has its main pages and components, while Phase 5
+> (the YES2 parser reads metadata, books, text, `snappy-blocks`, pericopes, footnotes, xrefs, and `.yes.gz`;
+> Bible versions persist in IndexedDB, while user data and the search index are still in-memory); Phase 4 has its main pages and components, while Phase 5
 > remains partial. Latest verification: `dotnet build --no-incremental` succeeded with 0 warnings/errors
-> and `dotnet test --no-build --verbosity normal` passed all 85 tests. Browser/device offline behavior has
+> and `dotnet test --no-build --verbosity normal` passed all 89 tests. Browser/device offline behavior has
 > not been verified end-to-end.
 
 ---
@@ -40,8 +40,8 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
     - [x] Pin `FluentValidation`
     - [x] Pin `Microsoft.AspNetCore.Components.WebAssembly`
     - [x] Pin `xunit`, `NSubstitute`, `FluentAssertions`
-    - [ ] Pin Snappy decompression library (managed WASM compatible)
-    - [ ] Pin IndexedDB interop package
+    - [x] Snappy: no package needed; managed `SnappyBlockDecoder` is implemented in Infrastructure.
+    - [x] Pin IndexedDB interop package (`DnetIndexedDb` is pinned; the repository currently uses the JS interop in `wwwroot/interop/indexeddb.js`).
 - [x] **Scaffold Source Projects (`src/`)**
   - [x] `src/OpenBible.Domain` (classlib, zero external dependencies)
   - [x] `src/OpenBible.Application` (classlib, references `Domain`)
@@ -174,7 +174,7 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
   - [x] `PericopeSectionReader`: parses data format versions 2 and 3 indexes plus version 4 blocks into `Pericope` entities (title, parallel passages, untitled headings skipped).
   - [x] `ArifEntrySectionReader` plus `FootnoteSectionReader` / `XRefSectionReader`: parse the ARIF index (version 1, sorted keys, relative offsets) into `FootnoteEntry` and `XRefEntry` entities attached to their verses. Inline `@<fN@>` / `@<xN@>` markers are rendered by `Application/Reading/Formatting/VerseMarkupFormatter`.
 - [/] **Decompression Engine**
-  - [/] Transparent `.yes.gz` GZip stream wrapper (`System.IO.Compression.GZipStream` exists; seek-dependent parsing still needs support).
+  - [x] Transparent `.yes.gz` GZip stream wrapper; `PrepareStream` uses a bounded spool to provide random access.
   - [x] Managed WASM-compatible Snappy block decoder (`YesFile/Compression/SnappyBlockDecoder`, no native dependency).
   - [x] `SnappyBlockStream`: seekable view over a `snappy-blocks` container using `block_size` and `compressed_block_sizes`, decompressing one block at a time.
 - [/] **Core Parser**
@@ -184,13 +184,13 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
     - [x] Asynchronously yields verses from uncompressed and `snappy-blocks` compressed text sections.
     - [x] Asynchronously yields pericope headings from the `pericopes` section.
     - [x] Attaches `footnotes` and `xrefs` entries to the verses addressed by their ARIF keys.
-    - [ ] GZip random access remains unimplemented.
-- [ ] **Offline Storage Implementations**
-  - [ ] `IndexedDbBibleRepository` implementing `IBibleRepository` using client-side IndexedDB interop.
-  - [ ] `IndexedDbUserDataRepository` implementing `IUserDataRepository` for bookmarks, highlights, and history.
-  - [ ] `IndexedDbSearchIndex` implementing `ISearchIndex` with tokenized text search.
+    - [x] GZip random access via bounded spool (`PrepareStream`).
+- [/] **Offline Storage Implementations**
+  - [x] `IndexedDbBibleRepository` implementing `IBibleRepository` via JS interop; lives in `OpenBible.Wasm` (registered in `Program.cs`), so Bible versions persist across reloads. It has no automated test yet.
+  - [ ] `IndexedDbUserDataRepository` implementing `IUserDataRepository` for bookmarks, highlights, and history (still in-memory; data is lost on reload).
+  - [ ] `IndexedDbSearchIndex` implementing `ISearchIndex` with tokenized text search (`SimpleSearchIndex` is in-memory; verify how it behaves with persisted versions after reload).
 - [/] **Dependency Injection Registration**
-  - [/] Create `DependencyInjection.cs` with `AddInfrastructure(this IServiceCollection)` registering parser and in-memory repositories/index (browser-persistent storage interop remains unimplemented).
+  - [/] Create `DependencyInjection.cs` with `AddInfrastructure(this IServiceCollection)` registering parser and in-memory user-data repository/search index; the Wasm host overrides `IBibleRepository` with `IndexedDbBibleRepository`.
 - [/] **Integration Tests (`OpenBible.Infrastructure.Tests`)**
   - [ ] Create minimal fixture `.yes` test file in `tests/fixtures/sample.yes`.
   - [x] Test `YesFileParser` header validation and section parsing (synthetic YES2 fixtures cover index bounds, books, text, and pericopes).
@@ -262,3 +262,15 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
 - [ ] **End-to-End Offline Verification**
   - [ ] Install PWA on iOS Safari / Android Chrome.
   - [ ] Import `.yes` file -> Navigate chapters -> Highlight verse -> Search -> Disconnect network -> Reload and verify complete offline functionality.
+
+---
+
+## Not yet in scope (androidbible features without a plan item)
+
+- [ ] Parallel version panes
+- [ ] Notes with verse links and labels for bookmarks
+- [ ] Reading plans and devotionals
+- [ ] Version catalog download (only local .yes import exists)
+- [ ] Backup/export and sync of user data
+- [ ] Songs
+

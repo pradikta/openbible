@@ -30,9 +30,9 @@ The solution builds with zero warnings and all tests pass. Implemented versus pe
 | Application use cases (read, import, search, bookmarks, highlights, reading position) | Implemented |
 | UI pages: Reader, Library, Import, Search; swipe navigation; dark mode; safe-area layout | Implemented |
 | `.yes` header/metadata/verse parsing with transparent GZip | Implemented (basic) |
-| `.yes` section readers (xref, footnote, pericope, ...) | Placeholders, not yet populated |
-| Snappy decompression | Not implemented |
-| Persistent storage (IndexedDB / SQLite WASM) | **Not implemented.** Repositories are currently in-memory, so imported data and user data are lost on reload |
+| `.yes` parsing: metadata, books, verse text, `snappy-blocks`, pericopes, footnotes, xrefs, `.yes.gz` | Implemented (see [ADR 0003](docs/adr/0003-yes-file-format-spec.md)) |
+| Bible version persistence | IndexedDB (`IndexedDbBibleRepository` in `OpenBible.Wasm`) |
+| User data (bookmarks, highlights, position) and search index | **In-memory**, lost on reload |
 | Sample scripture seeding so the reader works out of the box | Implemented |
 | CI workflow, trimming/Brotli tuning, offline end-to-end verification | Pending |
 
@@ -59,7 +59,7 @@ flowchart TB
     end
     subgraph Infra["OpenBible.Infrastructure"]
         YES["YesFileParser + section readers<br/>GZip detection"]
-        REPO["Bible / user-data repositories<br/>(in-memory today)"]
+        REPO["Bible repository<br/>(IndexedDB, hosted in Wasm)<br/>user-data repository (in-memory)"]
         IDX["SimpleSearchIndex"]
         SEED["SampleScriptureSeeder"]
     end
@@ -225,7 +225,7 @@ flowchart LR
     RF --> P["Pericopes"]
 ```
 
-Each section has its own `IYesSectionReader` so new sections can be added without modifying the core parser (Open/Closed). Known gaps: the xref/footnote readers are placeholders, Snappy decompression is missing, and the section names in `YesFileConstants.Sections` must be verified against the upstream names (`versionInfo`, `booksInfo`, `text`, `xrefs`, `footnotes`, `pericopies`) before real-world files are imported. Changes to the parser or ARI logic should be discussed first.
+Each section has its own reader so new sections can be added without modifying the core parser (Open/Closed). Snappy blocks are decoded by a managed decoder (no native dependency), and footnotes/xrefs are attached to verses through the ARIF index. Section names follow the upstream names (`versionInfo`, `booksInfo`, `text`, `xrefs`, `footnotes`, `pericopes`). Changes to the parser or ARI logic should be discussed first.
 
 ## Mapping from androidbible
 
@@ -236,7 +236,7 @@ Each section has its own `IYesSectionReader` so new sections can be added withou
 | `ViewModel` / `LiveData` | MediatR query + DTO |
 | `Ari` utility | `VerseReference` value object |
 | `Yes2Reader` | `YesFileParser` implementing `IYesFileReader` |
-| `InternalDb` / SQLite | `IBibleRepository` / `IUserDataRepository` (in-memory now; IndexedDB or SQLite WASM planned) |
+| `InternalDb` / SQLite | `IBibleRepository` / `IUserDataRepository` (Bible versions in IndexedDB; user data in-memory, persistence planned) |
 | `SharedPreferences` | `IUserDataRepository` (reading position, theme) |
 | Version ids `internal`, `preset/<name>`, `file/<path>` | `BibleVersion` ids in the catalog |
 | `DataInputStream` (big-endian) | `BinaryPrimitives.ReadInt32BigEndian` |
@@ -288,7 +288,7 @@ xUnit, NSubstitute and FluentAssertions. Domain tests cover ARI math and value-o
 
 ## Roadmap
 
-Open items, tracked in [PLAN.md](PLAN.md): real section readers and Snappy, persistent storage, `GetVerseQuery` and version-metadata query, import progress and search pagination, the `.yes` format ADR and a sample fixture, CI workflow, and end-to-end offline verification.
+Open items, tracked in [PLAN.md](PLAN.md): persistent user data and search index, `GetVerseQuery` and version-metadata query, import progress and search pagination, a sample `.yes` fixture, CI workflow, and end-to-end offline verification.
 
 ## Credits and license
 
