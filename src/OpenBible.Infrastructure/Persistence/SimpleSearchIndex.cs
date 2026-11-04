@@ -1,5 +1,6 @@
 using OpenBible.Domain.Entities;
 using OpenBible.Domain.Interfaces;
+using OpenBible.Infrastructure.Search;
 
 namespace OpenBible.Infrastructure.Persistence;
 
@@ -28,7 +29,7 @@ public sealed class SimpleSearchIndex : ISearchIndex
             return Task.FromResult<IReadOnlyList<SearchMatch>>(Array.Empty<SearchMatch>());
         }
 
-        var terms = query.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var terms = SearchQueryParser.Parse(query);
         var matches = new List<SearchMatch>();
 
         foreach (var verse in verses)
@@ -47,8 +48,7 @@ public sealed class SimpleSearchIndex : ISearchIndex
                 if (scope.Testament == Domain.Enums.Testament.NewTestament && isOt) continue;
             }
 
-            var allTermsMatch = terms.All(t => verse.Text.Contains(t, StringComparison.OrdinalIgnoreCase));
-            if (allTermsMatch)
+            if (SearchTermMatcher.MatchesAll(verse.Text, terms))
             {
                 matches.Add(new SearchMatch(verse.Reference, versionId, verse.Text, Score: 1.0));
             }

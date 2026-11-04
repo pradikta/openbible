@@ -41,7 +41,9 @@ else
     private static List<(string Text, bool Mark)> Split(string snippet, string query)
     {
         var parts = new List<(string Text, bool Mark)> { (snippet, false) };
-        var terms = query.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var terms = query.Replace('"', ' ').Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(t => t.TrimStart('+'))
+            .Where(t => t.Length > 0);
         foreach (var term in terms)
         {
             parts = Expand(parts, term);
