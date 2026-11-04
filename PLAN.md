@@ -169,7 +169,7 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
   - [x] `SectionContentStream`: reads section attributes (Bintex map) and exposes section content with offsets relative to the content start.
   - [x] `SectionContentStream`: transparently decompresses `snappy-blocks` payloads for any section that declares compression.
   - [/] Metadata Bintex parsing for title, language, description, and encoding is in `YesFileParser`; extract to a dedicated metadata reader and complete book ordering separately.
-  - [ ] `BookNamesSectionReader`: parses full and short book titles (`abbreviation`/full titles are not mapped yet).
+  - [x] `BookNamesSectionReader`: parses full and short book titles (`abbreviation`/full titles are mapped from `booksInfo` to `Book.ShortName`/`Book.FullName`, replacing internal catalog names where declared).
   - [x] Verse text reader uses book/chapter offsets and VarUInt lengths for both uncompressed and `snappy-blocks` compressed sections.
   - [x] `PericopeSectionReader`: parses data format versions 2 and 3 indexes plus version 4 blocks into `Pericope` entities (title, parallel passages, untitled headings skipped).
   - [x] `ArifEntrySectionReader` plus `FootnoteSectionReader` / `XRefSectionReader`: parse the ARIF index (version 1, sorted keys, relative offsets) into `FootnoteEntry` and `XRefEntry` entities attached to their verses. Inline `@<fN@>` / `@<xN@>` markers are rendered by `Application/Reading/Formatting/VerseMarkupFormatter`.

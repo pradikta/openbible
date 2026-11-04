@@ -14,12 +14,14 @@ namespace OpenBible.Application.Tests;
 public sealed class SearchBibleHandlerTests
 {
     private readonly ISearchIndex _searchIndex;
+    private readonly IBibleRepository _bibleRepository;
     private readonly SearchBibleHandler _handler;
 
     public SearchBibleHandlerTests()
     {
         _searchIndex = Substitute.For<ISearchIndex>();
-        _handler = new SearchBibleHandler(_searchIndex);
+        _bibleRepository = Substitute.For<IBibleRepository>();
+        _handler = new SearchBibleHandler(_bibleRepository, _searchIndex);
     }
 
     [Fact]
@@ -129,7 +131,7 @@ public sealed class SearchBibleHandlerTests
     [Fact]
     public async Task Handle_NullSearchIndex_ShouldReturnEmptyList()
     {
-        var handlerNoIndex = new SearchBibleHandler(null);
+        var handlerNoIndex = new SearchBibleHandler(Substitute.For<IBibleRepository>(), null);
         var query = new SearchBibleQuery("kjv", "genesis");
         var result = await handlerNoIndex.Handle(query, CancellationToken.None);
 

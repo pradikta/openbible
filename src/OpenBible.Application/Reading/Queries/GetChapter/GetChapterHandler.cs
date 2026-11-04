@@ -2,7 +2,7 @@ using MediatR;
 using OpenBible.Application.Common.Models;
 using OpenBible.Application.Reading.DTOs;
 using OpenBible.Application.Reading.Formatting;
-using OpenBible.Domain.Catalog;
+using OpenBible.Domain.Enums;
 using OpenBible.Domain.Interfaces;
 using OpenBible.Domain.ValueObjects;
 
@@ -73,14 +73,23 @@ public sealed class GetChapterHandler : IRequestHandler<GetChapterQuery, Result<
             p.ParallelPassages
         )).ToList();
 
+        var bookName = await ResolveBookNameAsync(request.VersionId, request.BookId, ct).ConfigureAwait(false);
+
         var chapterDto = new ChapterDto(
             request.BookId,
-            BibleBookCatalog.Get(request.BookId).FullName,
+            bookName,
             request.Chapter,
             verseDtos,
             pericopeDtos
         );
 
         return Result<ChapterDto>.Success(chapterDto);
+    }
+
+    private async Task<string> ResolveBookNameAsync(string versionId, BookId bookId, CancellationToken ct)
+    {
+        var version = await _bibleRepository.GetVersionAsync(versionId, ct).ConfigureAwait(false);
+        var book = version?.Books.FirstOrDefault(b => b.BookId == bookId);
+        return book?.FullName ?? OpenBible.Domain.Catalog.BibleBookCatalog.Get(bookId).FullName;
     }
 }

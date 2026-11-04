@@ -1,3 +1,4 @@
+using OpenBible.Domain.Enums;
 using OpenBible.Domain.Exceptions;
 using OpenBible.Infrastructure.YesFile;
 using System.Buffers.Binary;
@@ -162,6 +163,48 @@ public sealed class YesFileParserTests
             stream.Write(valueBytes);
         }
 
+        return stream.ToArray();
+    }
+
+    [Fact]
+    public async Task ReadMetadataAsync_BooksInfoWithAbbreviation_UsesAbbreviationAsShortName()
+    {
+        var metadata = CreateBintexMap(("shortName", "TST"), ("longName", "Test"), ("locale", "en"));
+        var books = CreateBooksInfoWithAbbreviation();
+        using var stream = CreateYes2File(("versionInfo", metadata), ("booksInfo", books), ("text", [1, (byte)'A']));
+
+        var version = await _parser.ReadMetadataAsync(stream);
+
+        var genesis = Assert.Single(version.Books);
+        Assert.Equal(BookId.Genesis, genesis.BookId);
+        // abbreviation ("Gn") replaces ShortName
+        Assert.Equal("Gn", genesis.ShortName);
+        // shortName ("Gen") becomes FullName
+        Assert.Equal("Gen", genesis.FullName);
+    }
+
+    private static byte[] CreateBooksInfoWithAbbreviation()
+    {
+        using var stream = new MemoryStream();
+        WriteInt32(stream, 1);
+        stream.WriteByte(0x91);
+        stream.WriteByte(7); // 7 entries including abbreviation
+        WriteBintexKey(stream, "bookId");
+        stream.WriteByte(0x0e); // zero
+        WriteBintexKey(stream, "shortName");
+        stream.WriteByte(0x53);
+        stream.Write(Encoding.Latin1.GetBytes("Gen"));
+        WriteBintexKey(stream, "abbreviation");
+        stream.WriteByte(0x52);
+        stream.Write(Encoding.Latin1.GetBytes("Gn"));
+        WriteBintexKey(stream, "offset");
+        stream.WriteByte(0x0e); // zero
+        WriteBintexKey(stream, "chapter_count");
+        stream.WriteByte(0x01);
+        WriteBintexKey(stream, "verse_counts");
+        stream.Write([0xc0, 1, 1]);
+        WriteBintexKey(stream, "chapter_offsets");
+        stream.Write([0xc0, 1, 0]);
         return stream.ToArray();
     }
 

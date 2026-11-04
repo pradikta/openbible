@@ -34,7 +34,12 @@ public sealed class YesFileParser : IYesFileReader
         var language = BintexValueAccess.GetString(metadata, "locale") ?? "en";
         var description = BintexValueAccess.GetString(metadata, "description") ?? string.Empty;
         var books = ReadBooks(decompressed, index)
-            .Select(static book => new Book(book.BookId, book.ShortName, book.ShortName, book.ChapterCount, book.VerseCounts))
+            .Select(static book => new Book(
+                book.BookId,
+                book.Abbreviation ?? book.ShortName,
+                book.ShortName,
+                book.ChapterCount,
+                book.VerseCounts))
             .ToList();
         var declaredBookCount = BintexValueAccess.GetInt(metadata, "book_count", books.Count);
         if (declaredBookCount != books.Count)
@@ -191,6 +196,7 @@ public sealed class YesFileParser : IYesFileReader
             }
 
             var shortName = BintexValueAccess.GetString(values, "shortName") ?? ((BookId)bookNumber).ToString();
+            var abbreviation = BintexValueAccess.GetString(values, "abbreviation");
             var chapterCount = BintexValueAccess.GetInt(values, "chapter_count", -1);
             var verseCounts = BintexValueAccess.GetIntArray(values, "verse_counts");
             var chapterOffsets = BintexValueAccess.GetIntArray(values, "chapter_offsets");
@@ -201,7 +207,7 @@ public sealed class YesFileParser : IYesFileReader
                 throw new YesFileCorruptException($"Invalid chapter index for YES2 book '{shortName}'.");
             }
 
-            books.Add(new ParsedBook((BookId)bookNumber, shortName, offset, chapterCount, verseCounts, chapterOffsets));
+            books.Add(new ParsedBook((BookId)bookNumber, shortName, abbreviation, offset, chapterCount, verseCounts, chapterOffsets));
             if (stream.Position > sectionEnd)
             {
                 throw new YesFileCorruptException("YES2 booksInfo content exceeds its section boundary.");
@@ -236,5 +242,5 @@ public sealed class YesFileParser : IYesFileReader
         return string.IsNullOrWhiteSpace(cleaned) ? "version" : cleaned;
     }
 
-    private sealed record ParsedBook(BookId BookId, string ShortName, int Offset, int ChapterCount, int[] VerseCounts, int[] ChapterOffsets);
+    private sealed record ParsedBook(BookId BookId, string ShortName, string? Abbreviation, int Offset, int ChapterCount, int[] VerseCounts, int[] ChapterOffsets);
 }
