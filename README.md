@@ -41,7 +41,7 @@ See [PLAN.md](PLAN.md) for the authoritative checklist.
 
 - **Reader**: chapter view, pericope headings, previous/next chapter by swipe or buttons, book selector, auto-resume of the last reading position.
 - **Verse actions**: highlight with colors, toggle bookmark, copy text.
-- **Library (Bible versions)**: list installed versions, set the default version (stored under `openbible.settings`), list bookmarks, delete a version, open Import, and browse the bundled official Alkitab catalog. Catalog downloads open in the browser and the file is then added through Import, since the download host does not allow cross-origin requests.
+- **Library (Bible versions)**: list installed versions, set the default version (stored under `openbible.settings`), list bookmarks, delete a version, open Import, and browse the bundled official Alkitab catalog. "Install" downloads a catalog file through a CORS proxy you configure (sample Cloudflare Worker in [docs/cloudflare-worker-proxy.js](docs/cloudflare-worker-proxy.js); enter its URL with `{url}` as placeholder) and imports it directly into the local database. Catalog hosts send no CORS headers, so without a proxy use "Manual download" and then Import.
 - **Import**: preview a `.yes` / `.yes.gz` file (metadata) before importing it (64 MB limit).
 - **Search**: debounced (300 ms) full-text search with scope filter (All / Old Testament / New Testament / Current book) and keyword highlighting.
 - **PWA polish**: iOS safe-area insets, system dark/light mode plus manual toggle, service worker with cache-first strategy for published assets.

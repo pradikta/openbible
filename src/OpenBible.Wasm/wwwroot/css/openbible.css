@@ -252,6 +252,22 @@ a.primary-btn {
     text-decoration: none;
 }
 
+.catalog-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.3rem;
+    flex-shrink: 0;
+}
+
+.proxy-settings {
+    margin: 0.75rem 0;
+}
+
+.error-text {
+    color: var(--ob-danger);
+}
+
 .catalog-search {
     width: 100%;
     box-sizing: border-box;

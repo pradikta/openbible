@@ -2,9 +2,28 @@
 
 <h2>Download more versions</h2>
 <p class="muted">
-    The list comes from the official Alkitab catalog and is stored in the app. Download starts in your browser;
-    then add the file with <a href="import">Import</a>.
+    The list comes from the official Alkitab catalog and is stored in the app. Install downloads the file through your
+    download proxy and adds it to this device. Without a proxy, use Manual download and then <a href="import">Import</a>.
 </p>
+
+<details class="proxy-settings">
+    <summary>Download proxy @(string.IsNullOrEmpty(_savedProxy) ? "(not set)" : "(set)")</summary>
+    <p class="muted">
+        Catalog hosts block direct browser downloads (no CORS). Deploy the proxy from
+        <code>docs/cloudflare-worker-proxy.js</code> and enter its URL with <code>{url}</code> as the placeholder.
+    </p>
+    <input class="catalog-search" type="url" placeholder="https://your-worker.workers.dev/?url={url}"
+           @bind="_proxyInput" aria-label="Download proxy URL" />
+    <div class="row-actions">
+        <button type="button" class="primary-btn" @onclick="SaveProxyAsync">Save</button>
+    </div>
+</details>
+
+@if (_message is not null)
+{
+    <p class="@(_messageIsError ? "error-text" : "muted")" role="status">@_message</p>
+}
+
 <input class="catalog-search" type="search" placeholder="Search name, language or description"
        value="@_search" @oninput="OnSearch" aria-label="Search versions" />
 
@@ -23,7 +42,16 @@ else
                 <span class="muted"> · @item.ShortName · @item.Locale</span>
                 <p class="muted">@item.Description</p>
             </div>
-            <a class="primary-btn" href="@item.DownloadUrl" target="_blank" rel="noopener noreferrer">Download</a>
+            <div class="catalog-actions">
+                @if (!string.IsNullOrEmpty(_savedProxy))
+                {
+                    <button type="button" class="primary-btn" disabled="@(_installing is not null)"
+                            @onclick="() => InstallAsync(item)">
+                        @(_installing == item.PresetName ? "Installing…" : "Install")
+                    </button>
+                }
+                <a class="text-btn" href="@item.DownloadUrl" target="_blank" rel="noopener noreferrer">Manual download</a>
+            </div>
         </article>
     }
 
@@ -36,11 +64,24 @@ else
 @code {
     private const int PageSize = 20;
 
+    [Parameter] public EventCallback OnInstalled { get; set; }
+
     private IReadOnlyList<CatalogVersionDto> _items = [];
     private string _search = string.Empty;
+    private string _proxyInput = string.Empty;
+    private string? _savedProxy;
+    private string? _installing;
+    private string? _message;
+    private bool _messageIsError;
     private int _visible = PageSize;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        var proxy = await Mediator.Send(new GetDownloadProxyQuery());
+        _savedProxy = proxy.IsSuccess ? proxy.Value : null;
+        _proxyInput = _savedProxy ?? string.Empty;
+        await LoadAsync();
+    }
 
     private async Task OnSearch(ChangeEventArgs e)
     {
@@ -53,5 +94,42 @@ else
     {
         var result = await Mediator.Send(new GetVersionCatalogQuery(_search));
         _items = result.IsSuccess ? result.Value! : [];
+    }
+
+    private async Task SaveProxyAsync()
+    {
+        var result = await Mediator.Send(new SetDownloadProxyCommand(_proxyInput));
+        if (!result.IsSuccess)
+        {
+            SetMessage(result.Error ?? "Invalid proxy URL.", true);
+            return;
+        }
+
+        _savedProxy = string.IsNullOrWhiteSpace(_proxyInput) ? null : _proxyInput.Trim();
+        SetMessage(_savedProxy is null ? "Proxy cleared." : "Proxy saved.", false);
+    }
+
+    private async Task InstallAsync(CatalogVersionDto item)
+    {
+        _installing = item.PresetName;
+        SetMessage($"Downloading {item.ShortName}…", false);
+        StateHasChanged();
+
+        var result = await Mediator.Send(new DownloadVersionCommand(item.PresetName));
+        _installing = null;
+        if (!result.IsSuccess)
+        {
+            SetMessage(result.Error ?? "Install failed.", true);
+            return;
+        }
+
+        SetMessage($"Installed {result.Value!.Title}.", false);
+        await OnInstalled.InvokeAsync();
+    }
+
+    private void SetMessage(string message, bool isError)
+    {
+        _message = message;
+        _messageIsError = isError;
     }
 }
