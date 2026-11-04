@@ -192,7 +192,7 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
 - [/] **Dependency Injection Registration**
   - [/] Create `DependencyInjection.cs` with `AddInfrastructure(this IServiceCollection)` registering parser and in-memory repositories/search index (no persistent browser storage yet).
 - [/] **Integration Tests (`OpenBible.Infrastructure.Tests`)**
-  - [ ] Create minimal fixture `.yes` test file in `tests/fixtures/sample.yes`.
+  - [x] Create minimal fixture `.yes` test file in `tests/fixtures/sample.yes` (Genesis 1, 3 verses; used by `SampleYesFixtureTests` and for manual import testing).
   - [x] Test `YesFileParser` header validation and section parsing (synthetic YES2 fixtures cover index bounds, books, text, and pericopes).
   - [x] Test Snappy decompression accuracy against known sample blocks (literal, copy-1, copy-2, truncated and out-of-range blocks).
   - [x] Test `snappy-blocks` verse text: single block, payload split across blocks, unsupported compression, and corrupt blocks.
