@@ -393,3 +393,5 @@ a.primary-btn {
 .chip { border: 1px solid var(--ob-border); border-radius: 999px; padding: 0.15rem 0.7rem; background: transparent; color: inherit; }
 .chip.selected { background: var(--ob-accent, #2f6fed); color: #fff; }
 .inline-form { display: flex; gap: 0.5rem; }
+
+.version-select { font: inherit; padding: 0.25rem 0.4rem; border: 1px solid var(--ob-border); border-radius: 6px; background: transparent; color: var(--ob-text); }

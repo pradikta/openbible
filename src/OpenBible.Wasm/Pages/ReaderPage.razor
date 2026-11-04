@@ -24,6 +24,15 @@ else
 {
     <div class="reader-toolbar">
         <button type="button" class="book-jump" @onclick="() => _selectorOpen = true">@Heading</button>
+        @if (_versions.Count > 1)
+        {
+            <select class="version-select" aria-label="Bible version" value="@VersionId" @onchange="OnVersionChanged">
+                @foreach (var v in _versions)
+                {
+                    <option value="@v.Id">@v.Id.ToUpperInvariant()</option>
+                }
+            </select>
+        }
         <div class="reader-nav">
             <button type="button" class="text-btn" @onclick="GoPrevious" disabled="@(!_canGoPrevious)">Prev</button>
             <button type="button" class="text-btn" @onclick="GoNext" disabled="@(!_canGoNext)">Next</button>
@@ -65,6 +74,7 @@ else
 
     private Result<ChapterDto>? _result;
     private IReadOnlyList<BookListItemDto> _books = [];
+    private IReadOnlyList<BibleVersionDto> _versions = [];
     private VerseDto? _selectedVerse;
     private bool _loading = true;
     private bool _emptyLibrary;
@@ -100,7 +110,21 @@ else
             ? booksResult.Value
             : [];
 
+        var versionsResult = await Mediator.Send(new GetInstalledVersionsQuery());
+        _versions = versionsResult.IsSuccess && versionsResult.Value is not null
+            ? versionsResult.Value
+            : [];
+
         await LoadChapterAsync();
+    }
+
+    private void OnVersionChanged(ChangeEventArgs e)
+    {
+        var id = e.Value?.ToString();
+        if (!string.IsNullOrWhiteSpace(id) && id != VersionId)
+        {
+            Navigation.NavigateTo($"/read/{id}/{Book}/{Chapter}");
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
