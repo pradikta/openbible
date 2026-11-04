@@ -7,7 +7,7 @@
 <section class="panel">
     <h1>Import</h1>
     <p class="muted">Add a .yes or .yes.gz translation. Parsing and storage stay on this device.</p>
-    <InputFile OnChange="OnFileSelected" accept=".yes,.gz,application/gzip" class="file-field" />
+    <InputFile OnChange="OnFileSelected" class="file-field" />
 
     @if (_busy)
     {
@@ -50,6 +50,17 @@
     {
         _file = args.File;
         _importError = null;
+
+        // Validasi file extension untuk iOS compatibility
+        var fileName = _file.Name.ToLowerInvariant();
+        if (!fileName.EndsWith(".yes") && !fileName.EndsWith(".yes.gz") && !fileName.EndsWith(".gz"))
+        {
+            _importError = "Only .yes, .yes.gz, or .gz files are supported.";
+            _file = null;
+            _preview = null;
+            return;
+        }
+
         _busy = true;
         await using var stream = await OpenSeekableAsync(_file);
         _preview = await Mediator.Send(new PreviewYesFileQuery(stream, _file.Name));
