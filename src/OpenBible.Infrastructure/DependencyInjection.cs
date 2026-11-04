@@ -28,6 +28,11 @@ public static class DependencyInjection
         services.AddSingleton<PersistentUserDataRepository>();
         services.AddSingleton<IUserDataRepository>(sp => sp.GetRequiredService<PersistentUserDataRepository>());
 
+        services.AddSingleton<InMemoryStudyDataRepository>();
+        services.AddSingleton<PersistentStudyDataRepository>();
+        services.AddSingleton<IStudyDataRepository>(sp => sp.GetRequiredService<PersistentStudyDataRepository>());
+        services.AddSingleton<IReadingContentSource, BundledReadingContent>();
+
         services.AddSingleton<ISearchIndex, SimpleSearchIndex>();
         services.AddSingleton<SampleScriptureSeeder>();
         services.AddSingleton<PersistenceInitializer>();

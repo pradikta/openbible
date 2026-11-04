@@ -35,11 +35,18 @@
     }
     else if (_results is not null)
     {
-        <SearchResultList Query="@_query" Results="_results" OnOpen="OpenResult" />
+        <p class="muted">@_results.Count result@(_results.Count == 1 ? "" : "s")</p>
+        <SearchResultList Query="@_query" Results="@_results.Take(_visible).ToList()" OnOpen="OpenResult" />
+        @if (_results.Count > _visible)
+        {
+            <button type="button" class="text-btn" @onclick="() => _visible += PageSize">Show more (@(_results.Count - _visible) left)</button>
+        }
     }
 </section>
 
 @code {
+    private const int PageSize = 50;
+    private int _visible = PageSize;
     private IReadOnlyList<BibleVersionDto> _versions = [];
     private IReadOnlyList<SearchResultDto>? _results;
     private string _versionId = string.Empty;
@@ -109,6 +116,7 @@
 
         _loading = true;
         _error = null;
+        _visible = PageSize;
         Testament? testament = _scope switch
         {
             "ot" => Testament.OldTestament,

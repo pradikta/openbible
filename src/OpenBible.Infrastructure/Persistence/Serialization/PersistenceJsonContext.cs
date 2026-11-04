@@ -4,5 +4,6 @@ namespace OpenBible.Infrastructure.Persistence.Serialization;
 
 [JsonSerializable(typeof(StoredVersion))]
 [JsonSerializable(typeof(StoredUserData))]
+[JsonSerializable(typeof(StoredStudyData))]
 [JsonSerializable(typeof(string[]))]
 internal sealed partial class PersistenceJsonContext : JsonSerializerContext;
