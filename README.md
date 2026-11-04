@@ -295,15 +295,30 @@ Service workers need HTTPS except on `localhost`, so put the container behind a 
 
 ### CI and images
 
-Two workflows share the work. [`.github/workflows/ci.yml`](.github/workflows/ci.yml) only verifies: it builds and tests, validates the compose file, and smoke tests the image with [`tools/smoke_test.sh`](tools/smoke_test.sh) on both `amd64` and `arm64` (the ARM64 image runs under QEMU, since the target Portainer host is ARM64). It runs on pull requests and can be called by other workflows. [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs on pushes to `main` and `v*` tags: it calls `ci.yml` first, and once that passes it pushes a multi-arch image to `ghcr.io/pradikta/openbible` (`latest`, version tags, short SHA) without attestation manifests so Portainer can pull it. Pull requests never push anything.
+Two workflows share the work. [`.github/workflows/ci.yml`](.github/workflows/ci.yml) is named `CI` and only verifies: it builds and tests, validates the compose file, and smoke tests the image with [`tools/smoke_test.sh`](tools/smoke_test.sh) on both `amd64` and `arm64` (the ARM64 image runs under QEMU, since the target Portainer host is ARM64). It runs on pushes and pull requests to `main`.
 
-**GitHub setup:** no secrets or environments are required. The workflow logs in to GHCR with the built-in `GITHUB_TOKEN` and requests `packages: write` itself, so nothing needs configuring in *Settings → Secrets and variables*. Two optional steps:
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) starts through `workflow_run` once `CI` has succeeded for a push to `main`, or manually through *Run workflow*. It has two jobs:
 
-- After the first publish, open the package (*Packages → openbible → Package settings*) and set the visibility to public if Portainer should pull without credentials. A private package needs a registry login in Portainer using a personal access token with `read:packages`.
+1. `publish` pushes a multi-arch image to `ghcr.io/pradikta/openbible` (`latest` and `sha-<short>`) without attestation manifests so Portainer can pull it. The commit hash and build date are baked into the image and exposed at `/version.json`.
+2. `redeploy` (environment `PRD`) POSTs to the Portainer stack webhook, then polls `PUBLIC_URL/version.json` until it reports the commit that was just built.
+
+Pull requests never publish or deploy.
+
+**GitHub setup**
+
+Publishing needs nothing: it logs in to GHCR with the built-in `GITHUB_TOKEN`. The redeploy job needs the `PRD` environment (*Settings → Environments*):
+
+| Kind | Name | Purpose |
+|---|---|---|
+| Secret | `PORTAINER_WEBHOOK_URL` | Stack webhook URL from Portainer (*Stacks → your stack → Webhook*). Without it the job only warns and skips the call. |
+| Secret (optional) | `CF_ACCESS_CLIENT_ID`, `CF_ACCESS_CLIENT_SECRET` | Cloudflare Access service token, only if Portainer sits behind Cloudflare Access. |
+| Variable (optional) | `PUBLIC_URL` | Public site URL, for example `https://bible.example.com`. Enables the revision check after redeploy. |
+
+Other notes:
+
+- After the first publish, set the package visibility to public under *Packages → openbible → Package settings* if Portainer should pull without credentials. A private package needs a registry login in Portainer using a personal access token with `read:packages`.
 - If the package already exists from another source, grant this repository write access under *Package settings → Manage Actions access*.
-
-A Portainer redeploy step is not part of `deploy.yml`. If added later, it would need a `PORTAINER_WEBHOOK_URL` secret (preferably on a protected environment such as `PRD`).
-
+- In the Portainer stack, use the image `ghcr.io/pradikta/openbible:latest`.
 ### Styling (Tailwind CSS)
 
 The UI uses Tailwind CSS v4 with a responsive shell (bottom tab bar on phones, sidebar from `md` up). The source is `src/OpenBible.Wasm/Styles/tailwind.css`; the generated `wwwroot/css/tailwind.css` is committed, so building the .NET solution does not need Node. After changing Razor classes or the stylesheet, rebuild it:

@@ -21,10 +21,14 @@ RUN case "$TARGETARCH" in amd64) RID_ARCH=x64 ;; *) RID_ARCH="$TARGETARCH" ;; es
         -c Release -a "$RID_ARCH" --no-restore --no-self-contained -o /app
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+ARG REVISION=dev
+ARG BUILD_DATE=unknown
 WORKDIR /app
 COPY --from=build /app ./
 
 # The base image already runs as the non-root `app` user and listens on 8080.
-ENV ASPNETCORE_HTTP_PORTS=8080
+ENV ASPNETCORE_HTTP_PORTS=8080 \
+    OPENBIBLE_REVISION=$REVISION \
+    OPENBIBLE_BUILD_DATE=$BUILD_DATE
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "OpenBible.Server.dll"]

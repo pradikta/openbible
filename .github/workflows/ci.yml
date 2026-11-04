@@ -1,10 +1,11 @@
 name: CI
 
-# Verification only. Pushes to main and tags run it through deploy.yml before publishing.
+# Verification only. Deploy runs after this workflow succeeds on main (see deploy.yml).
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
-  workflow_call:
   workflow_dispatch:
 
 concurrency:

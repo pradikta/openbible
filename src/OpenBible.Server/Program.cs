@@ -11,6 +11,13 @@ var app = builder.Build();
 
 app.MapStaticAssets();
 app.MapCatalogDownload();
+
+// Lets the deploy workflow confirm which build is actually serving traffic.
+app.MapGet("/version.json", () => Results.Json(new
+{
+    revision = Environment.GetEnvironmentVariable("OPENBIBLE_REVISION") ?? "dev",
+    buildDate = Environment.GetEnvironmentVariable("OPENBIBLE_BUILD_DATE") ?? "unknown",
+}));
 app.MapFallbackToFile("index.html");
 
 app.Run();

@@ -43,6 +43,7 @@ check "/read/kjv/0/1" "text/html"
 check "/_framework/blazor.webassembly.js" "javascript"
 check "/css/tailwind.css" "text/css"
 check "/manifest.webmanifest" "json"
+check "/version.json" "json"
 # The bundled KJV is what makes the reader work offline on first run.
 check "/data/en-kjv.yes.gz" "."
 
