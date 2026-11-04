@@ -44,12 +44,14 @@ public sealed class Yes2SectionIndex
         Span<byte> indexSizeBytes = stackalloc byte[4];
         ReadExactly(stream, indexSizeBytes);
         var indexSize = BinaryPrimitives.ReadInt32BigEndian(indexSizeBytes);
-        if (indexSize < 5 || indexSize > stream.Length - FixedHeaderLength)
+
+        // Real files count only the section records in this value (not the version byte and section
+        // count), so it is treated as informational and the data base is the position after the records.
+        if (indexSize < 0 || indexSize > stream.Length - FixedHeaderLength)
         {
             throw new YesFileCorruptException("Invalid YES2 section index size.");
         }
 
-        var indexEnd = checked((long)FixedHeaderLength + indexSize);
         var version = ReadByte(stream);
         if (version != 1)
         {
@@ -62,7 +64,7 @@ public sealed class Yes2SectionIndex
             throw new YesFileCorruptException("Invalid YES2 section count.");
         }
 
-        var sections = new Dictionary<string, Yes2SectionEntry>(StringComparer.Ordinal);
+        var records = new List<(string Name, int Offset, int AttributesSize, int ContentSize)>(sectionCount);
         for (var i = 0; i < sectionCount; i++)
         {
             var nameLength = ReadByte(stream);
@@ -82,9 +84,16 @@ public sealed class Yes2SectionIndex
                 throw new YesFileCorruptException($"Invalid bounds for YES2 section '{name}'.");
             }
 
+            records.Add((name, offset, attributesSize, contentSize));
+        }
+
+        var indexEnd = stream.Position;
+        var sections = new Dictionary<string, Yes2SectionEntry>(StringComparer.Ordinal);
+        foreach (var (name, offset, attributesSize, contentSize) in records)
+        {
             var sectionStart = checked(indexEnd + offset);
             var sectionLength = checked((long)attributesSize + contentSize);
-            if (sectionStart < indexEnd || sectionStart > stream.Length || sectionLength > stream.Length - sectionStart)
+            if (sectionStart > stream.Length || sectionLength > stream.Length - sectionStart)
             {
                 throw new YesFileCorruptException($"YES2 section '{name}' extends beyond the file boundary.");
             }
@@ -93,11 +102,6 @@ public sealed class Yes2SectionIndex
             {
                 throw new YesFileCorruptException($"Duplicate YES2 section '{name}'.");
             }
-        }
-
-        if (stream.Position != indexEnd)
-        {
-            throw new YesFileCorruptException("YES2 section index size does not match its records.");
         }
 
         return new Yes2SectionIndex(indexEnd, sections);

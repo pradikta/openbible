@@ -162,6 +162,8 @@ public sealed class YesFileParser : IYesFileReader
         // Check for GZip signature: 0x1F, 0x8B
         if (stream.CanSeek)
         {
+            // Earlier reads on the same stream (e.g. metadata then verses) may have consumed it.
+            stream.Seek(0, SeekOrigin.Begin);
             var b1 = stream.ReadByte();
             var b2 = stream.ReadByte();
             stream.Seek(0, SeekOrigin.Begin);

@@ -34,7 +34,7 @@ internal static class Yes2TestFile
 
         var file = new MemoryStream();
         file.Write(YesFileConstants.Yes2Header);
-        WriteInt32(file, checked((int)indexBody.Length));
+        WriteInt32(file, checked((int)indexBody.Length) - 5); // Real files exclude the version byte and count.
         indexBody.Position = 0;
         indexBody.CopyTo(file);
         foreach (var (_, attributes, content) in sections)

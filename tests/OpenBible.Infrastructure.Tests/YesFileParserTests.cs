@@ -129,7 +129,7 @@ public sealed class YesFileParserTests
 
         var file = new MemoryStream();
         file.Write(YesFileConstants.Yes2Header);
-        WriteInt32(file, checked((int)indexBody.Length));
+        WriteInt32(file, checked((int)indexBody.Length) - 5); // Real files exclude the version byte and count.
         indexBody.Position = 0;
         indexBody.CopyTo(file);
         foreach (var (_, content) in sections)
@@ -271,6 +271,25 @@ public sealed class YesFileParserTests
         Assert.Equal("King James Version", version.Title);
         Assert.Equal("en", version.Language);
         Assert.Equal("English translation", version.Description);
+    }
+
+    [Fact]
+    public async Task ReadVersesAsync_GZipStreamAfterMetadataRead_ReadsVerses()
+    {
+        var metadata = CreateBintexMap(("shortName", "TST"), ("longName", "Test"), ("locale", "en"));
+        using var stream = CreateGZipYes2File(
+            ("versionInfo", metadata),
+            ("booksInfo", CreateBooksInfo()),
+            ("text", [1, (byte)'A']));
+
+        await _parser.ReadMetadataAsync(stream);
+        var verses = new List<OpenBible.Domain.Entities.Verse>();
+        await foreach (var verse in _parser.ReadVersesAsync(stream))
+        {
+            verses.Add(verse);
+        }
+
+        Assert.Equal("A", Assert.Single(verses).Text);
     }
 
     [Fact]
