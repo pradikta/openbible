@@ -26,8 +26,19 @@ build_err.log
 build_out.log
 build_output.txt
 
-## Infrastructure generated code
-src/OpenBible.Infrastructure/IndexedDb/
-src/OpenBible.Wasm/wwwroot/interop/
-
+## Node (Tailwind CLI); the generated wwwroot/css/tailwind.css is committed
 node_modules/
+npm-debug.log*
+
+## Test results and coverage
+TestResults/
+*.trx
+coverage/
+*.coverage
+*.coveragexml
+
+## Local-only files
+.env
+*.log
+.playwright-mcp/
+*.new
