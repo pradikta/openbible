@@ -31,8 +31,7 @@ The solution builds with zero warnings and all tests pass. Implemented versus pe
 | UI pages: Reader, Library, Import, Search; swipe navigation; dark mode; safe-area layout | Implemented |
 | `.yes` header/metadata/verse parsing with transparent GZip | Implemented (basic) |
 | `.yes` parsing: metadata, books, verse text, `snappy-blocks`, pericopes, footnotes, xrefs, `.yes.gz` | Implemented (see [ADR 0003](docs/adr/0003-yes-file-format-spec.md)) |
-| Bible version persistence | IndexedDB (`IndexedDbBibleRepository` in `OpenBible.Wasm`) |
-| User data (bookmarks, highlights, position) and search index | **In-memory**, lost on reload |
+| Persistence | **Not implemented.** All repositories and the search index are in-memory; imported versions and user data are lost on reload |
 | Sample scripture seeding so the reader works out of the box | Implemented |
 | CI workflow, trimming/Brotli tuning, offline end-to-end verification | Pending |
 
@@ -59,7 +58,7 @@ flowchart TB
     end
     subgraph Infra["OpenBible.Infrastructure"]
         YES["YesFileParser + section readers<br/>GZip detection"]
-        REPO["Bible repository<br/>(IndexedDB, hosted in Wasm)<br/>user-data repository (in-memory)"]
+        REPO["Bible repository, user-data repository and search index<br/>(all in-memory today)"]
         IDX["SimpleSearchIndex"]
         SEED["SampleScriptureSeeder"]
     end
@@ -236,7 +235,7 @@ Each section has its own reader so new sections can be added without modifying t
 | `ViewModel` / `LiveData` | MediatR query + DTO |
 | `Ari` utility | `VerseReference` value object |
 | `Yes2Reader` | `YesFileParser` implementing `IYesFileReader` |
-| `InternalDb` / SQLite | `IBibleRepository` / `IUserDataRepository` (Bible versions in IndexedDB; user data in-memory, persistence planned) |
+| `InternalDb` / SQLite | `IBibleRepository` / `IUserDataRepository` (in-memory now; persistent storage planned) |
 | `SharedPreferences` | `IUserDataRepository` (reading position, theme) |
 | Version ids `internal`, `preset/<name>`, `file/<path>` | `BibleVersion` ids in the catalog |
 | `DataInputStream` (big-endian) | `BinaryPrimitives.ReadInt32BigEndian` |
@@ -288,7 +287,7 @@ xUnit, NSubstitute and FluentAssertions. Domain tests cover ARI math and value-o
 
 ## Roadmap
 
-Open items, tracked in [PLAN.md](PLAN.md): persistent user data and search index, `GetVerseQuery` and version-metadata query, import progress and search pagination, a sample `.yes` fixture, CI workflow, and end-to-end offline verification.
+Open items, tracked in [PLAN.md](PLAN.md): persistent storage (Bible versions, user data, search index), `GetVerseQuery` and version-metadata query, import progress and search pagination, a sample `.yes` fixture, CI workflow, and end-to-end offline verification.
 
 ## Credits and license
 

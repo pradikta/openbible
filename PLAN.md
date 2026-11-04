@@ -6,7 +6,7 @@
 >
 > **Progress snapshot (2026-11-04):** Phases 0–2 are substantially implemented; Phase 3 is in progress
 > (the YES2 parser reads metadata, books, text, `snappy-blocks`, pericopes, footnotes, xrefs, and `.yes.gz`;
-> Bible versions persist in IndexedDB, while user data and the search index are still in-memory); Phase 4 has its main pages and components, while Phase 5
+> all storage is still in-memory, so imported versions and user data are lost on reload); Phase 4 has its main pages and components, while Phase 5
 > remains partial. Latest verification: `dotnet build --no-incremental` succeeded with 0 warnings/errors
 > and `dotnet test --no-build --verbosity normal` passed all 89 tests. Browser/device offline behavior has
 > not been verified end-to-end.
@@ -185,12 +185,12 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
     - [x] Asynchronously yields pericope headings from the `pericopes` section.
     - [x] Attaches `footnotes` and `xrefs` entries to the verses addressed by their ARIF keys.
     - [x] GZip random access via bounded spool (`PrepareStream`).
-- [/] **Offline Storage Implementations**
-  - [x] `IndexedDbBibleRepository` implementing `IBibleRepository` via JS interop; lives in `OpenBible.Wasm` (registered in `Program.cs`), so Bible versions persist across reloads. It has no automated test yet.
+- [ ] **Offline Storage Implementations**
+  - [ ] `IndexedDbBibleRepository` implementing `IBibleRepository`. A non-functional stub exists in `OpenBible.Wasm` (JS argument mismatch, no verse storage, chapter lookup throws) and is **not registered**; the in-memory repository is used. Needs a proper design (ask first: storage engine decision).
   - [ ] `IndexedDbUserDataRepository` implementing `IUserDataRepository` for bookmarks, highlights, and history (still in-memory; data is lost on reload).
   - [ ] `IndexedDbSearchIndex` implementing `ISearchIndex` with tokenized text search (`SimpleSearchIndex` is in-memory; verify how it behaves with persisted versions after reload).
 - [/] **Dependency Injection Registration**
-  - [/] Create `DependencyInjection.cs` with `AddInfrastructure(this IServiceCollection)` registering parser and in-memory user-data repository/search index; the Wasm host overrides `IBibleRepository` with `IndexedDbBibleRepository`.
+  - [/] Create `DependencyInjection.cs` with `AddInfrastructure(this IServiceCollection)` registering parser and in-memory repositories/search index (no persistent browser storage yet).
 - [/] **Integration Tests (`OpenBible.Infrastructure.Tests`)**
   - [ ] Create minimal fixture `.yes` test file in `tests/fixtures/sample.yes`.
   - [x] Test `YesFileParser` header validation and section parsing (synthetic YES2 fixtures cover index bounds, books, text, and pericopes).
