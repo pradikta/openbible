@@ -5,6 +5,7 @@ using OpenBible.Domain.Enums;
 using OpenBible.Domain.Exceptions;
 using OpenBible.Domain.Interfaces;
 using OpenBible.Domain.ValueObjects;
+using OpenBible.Infrastructure.YesFile.Sections;
 
 namespace OpenBible.Infrastructure.YesFile;
 
@@ -22,14 +23,14 @@ public sealed class YesFileParser : IYesFileReader
 
         decompressed.Position = metadataSection.ContentOffset;
         var metadata = BintexValueMapReader.Read(decompressed, metadataSection.ContentSize);
-        var shortName = GetString(metadata, "shortName");
-        var title = GetString(metadata, "longName") ?? shortName ?? "Imported Version";
-        var language = GetString(metadata, "locale") ?? "en";
-        var description = GetString(metadata, "description") ?? string.Empty;
+        var shortName = BintexValueAccess.GetString(metadata, "shortName");
+        var title = BintexValueAccess.GetString(metadata, "longName") ?? shortName ?? "Imported Version";
+        var language = BintexValueAccess.GetString(metadata, "locale") ?? "en";
+        var description = BintexValueAccess.GetString(metadata, "description") ?? string.Empty;
         var books = ReadBooks(decompressed, index)
             .Select(static book => new Book(book.BookId, book.ShortName, book.ShortName, book.ChapterCount, book.VerseCounts))
             .ToList();
-        var declaredBookCount = GetInt(metadata, "book_count", books.Count);
+        var declaredBookCount = BintexValueAccess.GetInt(metadata, "book_count", books.Count);
         if (declaredBookCount != books.Count)
         {
             throw new YesFileCorruptException("YES2 versionInfo book_count does not match booksInfo.");
@@ -50,43 +51,32 @@ public sealed class YesFileParser : IYesFileReader
         var metadataSection = GetRequiredSection(index, YesFileConstants.Sections.VersionInfo);
         decompressed.Position = metadataSection.ContentOffset;
         var metadata = BintexValueMapReader.Read(decompressed, metadataSection.ContentSize);
-        var textEncoding = GetInt(metadata, "textEncoding", 2);
+        var textEncoding = BintexValueAccess.GetInt(metadata, "textEncoding", 2);
         var books = ReadBooks(decompressed, index);
         var textSection = GetRequiredSection(index, YesFileConstants.Sections.VerseText);
-        if (textSection.AttributesSize > 0)
-        {
-            decompressed.Position = textSection.StartOffset;
-            var attributes = BintexValueMapReader.Read(decompressed, textSection.AttributesSize);
-            if (GetString(attributes, "compression.name") is { } compression)
-            {
-                throw new NotSupportedException($"YES2 text compression '{compression}' is not supported yet.");
-            }
-        }
-
-        var textEnd = textSection.ContentOffset + textSection.ContentSize;
+        using var textContent = SectionContentStream.Open(decompressed, textSection);
         foreach (var book in books)
         {
             for (var chapter = 1; chapter <= book.ChapterCount; chapter++)
             {
                 ct.ThrowIfCancellationRequested();
-                var chapterOffset = book.ChapterOffsets[chapter - 1];
-                var chapterPosition = checked(textSection.ContentOffset + book.Offset + chapterOffset);
-                if (chapterPosition < textSection.ContentOffset || chapterPosition >= textEnd)
+                var chapterOffset = checked(book.Offset + book.ChapterOffsets[chapter - 1]);
+                if (chapterOffset < 0 || chapterOffset >= textContent.Length)
                 {
                     throw new YesFileCorruptException("YES2 chapter offset is outside the text section.");
                 }
 
-                decompressed.Position = chapterPosition;
+                textContent.SeekTo(chapterOffset);
                 for (var verse = 1; verse <= book.VerseCounts[chapter - 1]; verse++)
                 {
                     ct.ThrowIfCancellationRequested();
-                    var byteLength = BintexValueMapReader.ReadVarUInt(decompressed);
-                    if (byteLength < 0 || byteLength > textEnd - decompressed.Position)
+                    var byteLength = BintexValueMapReader.ReadVarUInt(textContent.Stream);
+                    if (byteLength < 0 || byteLength > textContent.Length - textContent.Position)
                     {
                         throw new YesFileCorruptException("YES2 verse text exceeds the text section boundary.");
                     }
 
-                    var textBytes = ReadExactly(decompressed, byteLength);
+                    var textBytes = ReadExactly(textContent.Stream, byteLength);
                     var text = textEncoding switch
                     {
                         1 => System.Text.Encoding.ASCII.GetString(textBytes),
@@ -104,16 +94,21 @@ public sealed class YesFileParser : IYesFileReader
         Stream stream,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
-        var decompressed = PrepareStream(stream);
         ct.ThrowIfCancellationRequested();
+        var decompressed = PrepareStream(stream);
         var index = Yes2SectionIndex.Read(decompressed);
-        if (index.TryGetSection(YesFileConstants.Sections.Pericope, out var section) && section is not null)
+        if (!index.TryGetSection(YesFileConstants.Sections.Pericope, out var section) || section is null)
         {
-            throw new NotSupportedException("YES2 pericope sections are not supported yet.");
+            await Task.CompletedTask.ConfigureAwait(false);
+            yield break;
         }
 
-        await Task.CompletedTask.ConfigureAwait(false);
-        yield break;
+        using var content = SectionContentStream.Open(decompressed, section);
+        foreach (var pericope in PericopeSectionReader.Read(content))
+        {
+            ct.ThrowIfCancellationRequested();
+            yield return pericope;
+        }
     }
 
     private static Stream PrepareStream(Stream stream)
@@ -155,17 +150,17 @@ public sealed class YesFileParser : IYesFileReader
         for (var i = 0; i < count; i++)
         {
             var values = BintexValueMapReader.ReadMap(stream);
-            var bookNumber = GetInt(values, "bookId", -1);
+            var bookNumber = BintexValueAccess.GetInt(values, "bookId", -1);
             if (!Enum.IsDefined(typeof(BookId), bookNumber))
             {
                 throw new YesFileCorruptException($"Invalid YES2 book ID: {bookNumber}.");
             }
 
-            var shortName = GetString(values, "shortName") ?? ((BookId)bookNumber).ToString();
-            var chapterCount = GetInt(values, "chapter_count", -1);
-            var verseCounts = GetIntArray(values, "verse_counts");
-            var chapterOffsets = GetIntArray(values, "chapter_offsets");
-            var offset = GetInt(values, "offset", -1);
+            var shortName = BintexValueAccess.GetString(values, "shortName") ?? ((BookId)bookNumber).ToString();
+            var chapterCount = BintexValueAccess.GetInt(values, "chapter_count", -1);
+            var verseCounts = BintexValueAccess.GetIntArray(values, "verse_counts");
+            var chapterOffsets = BintexValueAccess.GetIntArray(values, "chapter_offsets");
+            var offset = BintexValueAccess.GetInt(values, "offset", -1);
             if (chapterCount < 0 || chapterCount > 255 || offset < 0 || verseCounts.Length != chapterCount || chapterOffsets.Length < chapterCount ||
                 verseCounts.Any(static value => value < 0) || chapterOffsets.Any(static value => value < 0))
             {
@@ -206,15 +201,6 @@ public sealed class YesFileParser : IYesFileReader
         var cleaned = new string(title.Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
         return string.IsNullOrWhiteSpace(cleaned) ? "version" : cleaned;
     }
-
-    private static string? GetString(IReadOnlyDictionary<string, object?> values, string key) =>
-        values.TryGetValue(key, out var value) ? value as string : null;
-
-    private static int GetInt(IReadOnlyDictionary<string, object?> values, string key, int defaultValue) =>
-        values.TryGetValue(key, out var value) && value is int integer ? integer : defaultValue;
-
-    private static int[] GetIntArray(IReadOnlyDictionary<string, object?> values, string key) =>
-        values.TryGetValue(key, out var value) && value is int[] integers ? integers : Array.Empty<int>();
 
     private sealed record ParsedBook(BookId BookId, string ShortName, int Offset, int ChapterCount, int[] VerseCounts, int[] ChapterOffsets);
 }

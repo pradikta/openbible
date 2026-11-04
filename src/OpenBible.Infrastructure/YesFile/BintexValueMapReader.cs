@@ -25,9 +25,10 @@ internal static class BintexValueMapReader
         return values;
     }
 
-    public static IReadOnlyDictionary<string, object?> ReadMap(Stream stream)
+    public static IReadOnlyDictionary<string, object?> ReadMap(Stream stream) => ReadMap(stream, ReadByte(stream));
+
+    private static IReadOnlyDictionary<string, object?> ReadMap(Stream stream, byte tag)
     {
-        var tag = ReadByte(stream);
         var count = tag switch
         {
             0x90 => 0,
@@ -47,6 +48,20 @@ internal static class BintexValueMapReader
         }
 
         return values;
+    }
+
+    /// <summary>
+    /// Reads a single Bintex value and requires it to be a string.
+    /// </summary>
+    public static string ReadValueString(Stream stream)
+    {
+        var value = ReadValue(stream);
+        return value switch
+        {
+            string text => text,
+            null => string.Empty,
+            _ => throw new YesFileCorruptException("Expected a Bintex string value.")
+        };
     }
 
     private static object? ReadValue(Stream stream)
@@ -80,6 +95,7 @@ internal static class BintexValueMapReader
             0xc8 => ReadArray(stream, ReadLength(stream), 1),
             0xc9 => ReadArray(stream, ReadLength(stream), 2),
             0xcc => ReadArray(stream, ReadLength(stream), 4),
+            0x90 or 0x91 => ReadMap(stream, tag),
             _ => throw new YesFileCorruptException($"Unsupported Bintex value tag 0x{tag:X2}.")
         };
     }

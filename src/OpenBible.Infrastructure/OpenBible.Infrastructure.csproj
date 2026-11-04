@@ -3,4 +3,7 @@
     <ProjectReference Include="..\OpenBible.Domain\OpenBible.Domain.csproj" />
     <ProjectReference Include="..\OpenBible.Application\OpenBible.Application.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="OpenBible.Infrastructure.Tests" />
+  </ItemGroup>
 </Project>
