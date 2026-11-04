@@ -3,6 +3,13 @@
 > **Single Source of Truth for Project Progress**  
 > Update this checklist incrementally as tasks are started `[/]` and completed `[x]`.  
 > Every milestone must pass `dotnet build` and `dotnet test` with zero warnings and zero errors before proceeding.
+>
+> **Progress snapshot (2026-11-04):** Phases 0–2 are substantially implemented; Phase 3 is in progress
+> (the core parser exists, but section readers are placeholders and persistent browser storage/Snappy
+> decompression are not implemented); Phase 4 has its main pages and components, while Phase 5 remains
+> partial. Latest verification: `dotnet build --no-incremental` succeeded with 0 warnings/errors and
+> `dotnet test --no-build --verbosity normal` passed all 44 tests. Browser/device offline behavior has
+> not been verified end-to-end.
 
 ---
 
@@ -18,229 +25,229 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
 
 ## Phase 0: Solution Scaffolding & CI Baseline
 
-- [ ] **SDK & Tooling Setup**
-  - [ ] Create `global.json` pinning .NET 10 SDK version (`10.0.100` or latest installed).
-  - [ ] Create classic solution file `OpenBible.sln` via `dotnet new sln -n OpenBible --format sln`.
-  - [ ] Create `.gitignore` tailored for .NET 10, Blazor WASM, and IDEs.
-- [ ] **Centralized MSBuild Configurations**
-  - [ ] Create `Directory.Build.props`:
-    - [ ] `TargetFramework`: `net10.0`
-    - [ ] `Nullable`: `enable`
-    - [ ] `ImplicitUsings`: `enable`
-    - [ ] `TreatWarningsAsErrors`: `true`
-  - [ ] Create `Directory.Packages.props` for Central Package Management (CPM):
-    - [ ] Pin `MediatR` (and `MediatR.Contracts`)
-    - [ ] Pin `FluentValidation`
-    - [ ] Pin `Microsoft.AspNetCore.Components.WebAssembly`
-    - [ ] Pin `xunit`, `NSubstitute`, `FluentAssertions`
+- [x] **SDK & Tooling Setup**
+  - [x] Create `global.json` pinning .NET 10 SDK version (`10.0.100` or latest installed).
+  - [x] Create classic solution file `OpenBible.sln` via `dotnet new sln -n OpenBible --format sln`.
+  - [x] Create `.gitignore` tailored for .NET 10, Blazor WASM, and IDEs.
+- [/] **Centralized MSBuild Configurations**
+  - [x] Create `Directory.Build.props`:
+    - [x] `TargetFramework`: `net10.0`
+    - [x] `Nullable`: `enable`
+    - [x] `ImplicitUsings`: `enable`
+    - [x] `TreatWarningsAsErrors`: `true`
+  - [/] Create `Directory.Packages.props` for Central Package Management (CPM):
+    - [x] Pin `MediatR` (and `MediatR.Contracts`)
+    - [x] Pin `FluentValidation`
+    - [x] Pin `Microsoft.AspNetCore.Components.WebAssembly`
+    - [x] Pin `xunit`, `NSubstitute`, `FluentAssertions`
     - [ ] Pin Snappy decompression library (managed WASM compatible)
     - [ ] Pin IndexedDB interop package
-- [ ] **Scaffold Source Projects (`src/`)**
-  - [ ] `src/OpenBible.Domain` (classlib, zero external dependencies)
-  - [ ] `src/OpenBible.Application` (classlib, references `Domain`)
-  - [ ] `src/OpenBible.Infrastructure` (classlib, references `Domain` + `Application`)
-  - [ ] `src/OpenBible.Wasm` (blazorwasm project, references `Application` + `Infrastructure`)
-- [ ] **Scaffold Test Projects (`tests/`)**
-  - [ ] `tests/OpenBible.Domain.Tests` (xunit, references `Domain`)
-  - [ ] `tests/OpenBible.Application.Tests` (xunit, references `Application` + `Domain`)
-  - [ ] `tests/OpenBible.Infrastructure.Tests` (xunit, references `Infrastructure` + `Domain` + `Application`)
-- [ ] **Verification Gate**
-  - [ ] Run `dotnet restore`
-  - [ ] Run `dotnet build --no-incremental` (must succeed with 0 warnings, 0 errors)
-  - [ ] Run `dotnet test --no-build`
+- [x] **Scaffold Source Projects (`src/`)**
+  - [x] `src/OpenBible.Domain` (classlib, zero external dependencies)
+  - [x] `src/OpenBible.Application` (classlib, references `Domain`)
+  - [x] `src/OpenBible.Infrastructure` (classlib, references `Domain` + `Application`)
+  - [x] `src/OpenBible.Wasm` (blazorwasm project, references `Application` + `Infrastructure`)
+- [x] **Scaffold Test Projects (`tests/`)**
+  - [x] `tests/OpenBible.Domain.Tests` (xunit, references `Domain`)
+  - [x] `tests/OpenBible.Application.Tests` (xunit, references `Application` + `Domain`)
+  - [x] `tests/OpenBible.Infrastructure.Tests` (xunit, references `Infrastructure` + `Domain` + `Application`)
+- [x] **Verification Gate**
+  - [x] Run `dotnet restore`
+  - [x] Run `dotnet build --no-incremental` (must succeed with 0 warnings, 0 errors)
+  - [x] Run `dotnet test --no-build`
 
 ---
 
 ## Phase 1: Domain Core & ARI Addressing Engine (Backend)
 
-- [ ] **Enums & Identifiers**
-  - [ ] Define `BookId` enum (`0` to `65`, matching androidbible zero-based index: Genesis = 0, Revelation = 65).
-  - [ ] Define `Testament` enum (`OldTestament`, `NewTestament`).
-  - [ ] Define `YesSectionType` enum (`VersionInfo`, `BookNames`, `VerseText`, `Pericope`, `Xref`, `Footnotes`).
-  - [ ] Define `HighlightColor` enum (`Yellow`, `Green`, `Blue`, `Pink`, `Purple`).
-- [ ] **Value Objects (Immutable & Structurally Equatable)**
-  - [ ] Implement `VerseReference`:
-    - [ ] `BookId Book`, `int Chapter` (1-based), `int Verse` (1-based, 0 = whole chapter).
-    - [ ] `int ToAri()` bit-shift packing: `(bookId << 16) | (chapter << 8) | verse`.
-    - [ ] `static VerseReference FromAri(int ari)` unpacking.
-    - [ ] `string ToDisplayString(string? bookName = null)`.
-    - [ ] Structural equality (`IEquatable<VerseReference>`) and operator overloads (`==`, `!=`).
-  - [ ] Implement `VerseRange`:
-    - [ ] `VerseReference Start`, `VerseReference End`.
-    - [ ] Range validation (same book/chapter, `Start.Verse <= End.Verse`).
-    - [ ] `bool Contains(VerseReference reference)`.
-  - [ ] Implement `YesFileDescriptor`:
-    - [ ] File metadata, format version (`YES1` vs `YES2`), byte length, is compressed (`.gz`).
-- [ ] **Domain Entities**
-  - [ ] `Verse`: `VerseReference Reference`, `string Text`, `IReadOnlyList<FootnoteEntry> Footnotes`.
-  - [ ] `Chapter`: `BookId Book`, `int ChapterNumber`, `IReadOnlyList<Verse> Verses`.
-  - [ ] `Book`: `BookId BookId`, `string ShortName`, `string FullName`, `int ChapterCount`, `IReadOnlyList<int> VerseCounts`.
-  - [ ] `BibleVersion`: `string Id`, `string Title`, `string Language`, `string Description`, `IReadOnlyList<Book> Books`.
-  - [ ] `Pericope`: Section heading with `VerseReference Reference`, `string Title`, `IReadOnlyList<string> ParallelPassages`.
-  - [ ] `FootnoteEntry`: `VerseReference Reference`, `int Index`, `string Content`.
-  - [ ] `Bookmark`: `Guid Id`, `string VersionId`, `VerseReference Reference`, `DateTimeOffset CreatedAt`, `string? Note`.
-  - [ ] `Highlight`: `Guid Id`, `string VersionId`, `VerseReference Reference`, `HighlightColor Color`, `DateTimeOffset UpdatedAt`.
-  - [ ] `ReadingPosition`: `string VersionId`, `VerseReference Reference`, `DateTimeOffset LastReadAt`.
-- [ ] **Repository & Service Contracts (Interfaces)**
-  - [ ] `IBibleRepository`:
-    - [ ] `Task<IReadOnlyList<BibleVersion>> GetInstalledVersionsAsync(CancellationToken ct = default)`
-    - [ ] `Task<BibleVersion?> GetVersionAsync(string versionId, CancellationToken ct = default)`
-    - [ ] `Task<IReadOnlyList<Verse>> GetChapterVersesAsync(string versionId, BookId book, int chapter, CancellationToken ct = default)`
-    - [ ] `Task<IReadOnlyList<Pericope>> GetChapterPericopesAsync(string versionId, BookId book, int chapter, CancellationToken ct = default)`
-    - [ ] `Task SaveVersionAsync(BibleVersion version, IAsyncEnumerable<Verse> verses, CancellationToken ct = default)`
-    - [ ] `Task DeleteVersionAsync(string versionId, CancellationToken ct = default)`
-  - [ ] `IYesFileReader`:
-    - [ ] `Task<BibleVersion> ReadMetadataAsync(Stream stream, CancellationToken ct = default)`
-    - [ ] `IAsyncEnumerable<Verse> ReadVersesAsync(Stream stream, CancellationToken ct = default)`
-    - [ ] `IAsyncEnumerable<Pericope> ReadPericopesAsync(Stream stream, CancellationToken ct = default)`
-  - [ ] `ISearchIndex`:
-    - [ ] `Task IndexVersionAsync(string versionId, IAsyncEnumerable<Verse> verses, CancellationToken ct = default)`
-    - [ ] `Task<IReadOnlyList<SearchResult>> SearchAsync(SearchQuery query, CancellationToken ct = default)`
-  - [ ] `IUserDataRepository`:
-    - [ ] Reading position save & retrieve
-    - [ ] Bookmarks CRUD
-    - [ ] Highlights CRUD
-- [ ] **Domain Exceptions & Events**
-  - [ ] `YesFileCorruptException`, `VerseNotFoundException`, `VersionAlreadyExistsException`.
-  - [ ] `BibleVersionImportedEvent`, `ReadingPositionChangedEvent`.
-- [ ] **Unit Tests (`OpenBible.Domain.Tests`)**
-  - [ ] ARI packing/unpacking roundtrip tests for boundary values (Gen 1:1, Rev 22:21, whole chapter 0x000100).
-  - [ ] `VerseReference` equality, comparison, and invalid input exceptions.
-  - [ ] `VerseRange` containment tests.
+- [x] **Enums & Identifiers**
+  - [x] Define `BookId` enum (`0` to `65`, matching androidbible zero-based index: Genesis = 0, Revelation = 65).
+  - [x] Define `Testament` enum (`OldTestament`, `NewTestament`).
+  - [x] Define `YesSectionType` enum (`VersionInfo`, `BookNames`, `VerseText`, `Pericope`, `Xref`, `Footnotes`).
+  - [x] Define `HighlightColor` enum (`Yellow`, `Green`, `Blue`, `Pink`, `Purple`).
+- [x] **Value Objects (Immutable & Structurally Equatable)**
+  - [x] Implement `VerseReference`:
+    - [x] `BookId Book`, `int Chapter` (1-based), `int Verse` (1-based, 0 = whole chapter).
+    - [x] `int ToAri()` bit-shift packing: `(bookId << 16) | (chapter << 8) | verse`.
+    - [x] `static VerseReference FromAri(int ari)` unpacking.
+    - [x] `string ToDisplayString(string? bookName = null)`.
+    - [x] Structural equality (`IEquatable<VerseReference>`) and operator overloads (`==`, `!=`).
+  - [x] Implement `VerseRange`:
+    - [x] `VerseReference Start`, `VerseReference End`.
+    - [x] Range validation (same book/chapter, `Start.Verse <= End.Verse`).
+    - [x] `bool Contains(VerseReference reference)`.
+  - [x] Implement `YesFileDescriptor`:
+    - [x] File metadata, format version (`YES1` vs `YES2`), byte length, is compressed (`.gz`).
+- [x] **Domain Entities**
+  - [x] `Verse`: `VerseReference Reference`, `string Text`, `IReadOnlyList<FootnoteEntry> Footnotes`.
+  - [x] `Chapter`: `BookId Book`, `int ChapterNumber`, `IReadOnlyList<Verse> Verses`.
+  - [x] `Book`: `BookId BookId`, `string ShortName`, `string FullName`, `int ChapterCount`, `IReadOnlyList<int> VerseCounts`.
+  - [x] `BibleVersion`: `string Id`, `string Title`, `string Language`, `string Description`, `IReadOnlyList<Book> Books`.
+  - [x] `Pericope`: Section heading with `VerseReference Reference`, `string Title`, `IReadOnlyList<string> ParallelPassages`.
+  - [x] `FootnoteEntry`: `VerseReference Reference`, `int Index`, `string Content`.
+  - [x] `Bookmark`: `Guid Id`, `string VersionId`, `VerseReference Reference`, `DateTimeOffset CreatedAt`, `string? Note`.
+  - [x] `Highlight`: `Guid Id`, `string VersionId`, `VerseReference Reference`, `HighlightColor Color`, `DateTimeOffset UpdatedAt`.
+  - [x] `ReadingPosition`: `string VersionId`, `VerseReference Reference`, `DateTimeOffset LastReadAt`.
+- [x] **Repository & Service Contracts (Interfaces)**
+  - [x] `IBibleRepository`:
+    - [x] `Task<IReadOnlyList<BibleVersion>> GetInstalledVersionsAsync(CancellationToken ct = default)`
+    - [x] `Task<BibleVersion?> GetVersionAsync(string versionId, CancellationToken ct = default)`
+    - [x] `Task<IReadOnlyList<Verse>> GetChapterVersesAsync(string versionId, BookId book, int chapter, CancellationToken ct = default)`
+    - [x] `Task<IReadOnlyList<Pericope>> GetChapterPericopesAsync(string versionId, BookId book, int chapter, CancellationToken ct = default)`
+    - [x] `Task SaveVersionAsync(BibleVersion version, IAsyncEnumerable<Verse> verses, CancellationToken ct = default)`
+    - [x] `Task DeleteVersionAsync(string versionId, CancellationToken ct = default)`
+  - [x] `IYesFileReader`:
+    - [x] `Task<BibleVersion> ReadMetadataAsync(Stream stream, CancellationToken ct = default)`
+    - [x] `IAsyncEnumerable<Verse> ReadVersesAsync(Stream stream, CancellationToken ct = default)`
+    - [x] `IAsyncEnumerable<Pericope> ReadPericopesAsync(Stream stream, CancellationToken ct = default)`
+  - [x] `ISearchIndex`:
+    - [x] `Task IndexVersionAsync(string versionId, IAsyncEnumerable<Verse> verses, CancellationToken ct = default)`
+    - [x] `Task<IReadOnlyList<SearchResult>> SearchAsync(SearchQuery query, CancellationToken ct = default)`
+  - [x] `IUserDataRepository`:
+    - [x] Reading position save & retrieve
+    - [x] Bookmarks CRUD
+    - [x] Highlights CRUD
+- [/] **Domain Exceptions & Events**
+  - [x] `YesFileCorruptException`, `VerseNotFoundException`.
+  - [ ] `VersionAlreadyExistsException`, `BibleVersionImportedEvent`, `ReadingPositionChangedEvent`.
+- [/] **Unit Tests (`OpenBible.Domain.Tests`)**
+  - [x] ARI packing/unpacking roundtrip tests for boundary values (Gen 1:1, Rev 22:21, whole chapter 0x000100).
+  - [x] `VerseReference` equality, comparison, and invalid input exceptions.
+  - [x] `VerseRange` containment tests.
   - [ ] Entity invariants and guard clauses.
 
 ---
 
 ## Phase 2: Application CQRS & Business Logic (Backend)
 
-- [ ] **Common Core & Monads**
-  - [ ] Implement `Result<T>` and `Result` in `Common/Models/` (Success, Failure, Error reasons).
-  - [ ] Pipeline Behaviors:
-    - [ ] `LoggingBehavior<TRequest, TResponse>` (intercepts requests, measures execution time).
-    - [ ] `ValidationBehavior<TRequest, TResponse>` (validates via FluentValidation, returns `Result.Failure`).
-- [ ] **Data Transfer Objects (DTOs)**
-  - [ ] `ChapterDto(BookId BookId, string BookName, int ChapterNumber, IReadOnlyList<VerseDto> Verses, IReadOnlyList<PericopeDto> Pericopes)`
-  - [ ] `VerseDto(int VerseNumber, string Text, int Ari, bool IsBookmarked, HighlightColor? Highlight)`
-  - [ ] `PericopeDto(int BeforeVerse, string Title, IReadOnlyList<string> Parallels)`
-  - [ ] `BibleVersionDto(string Id, string Title, string Language, string Description, int TotalBooks)`
-  - [ ] `SearchResultDto(VerseReference Reference, string VersionId, string BookName, int Chapter, int Verse, string Snippet, double Score)`
-  - [ ] `BookmarkDto`, `HighlightDto`, `ReadingPositionDto`
-- [ ] **Use Cases: Bible Reading & Navigation**
-  - [ ] `GetChapterQuery` + `GetChapterHandler` + `GetChapterValidator`
+- [x] **Common Core & Monads**
+  - [x] Implement `Result<T>` and `Result` in `Common/Models/` (Success, Failure, Error reasons).
+  - [x] Pipeline Behaviors:
+    - [x] `LoggingBehavior<TRequest, TResponse>` (intercepts requests, measures execution time).
+    - [x] `ValidationBehavior<TRequest, TResponse>` (validates via FluentValidation, returns `Result.Failure`).
+- [x] **Data Transfer Objects (DTOs)**
+  - [x] `ChapterDto(BookId BookId, string BookName, int ChapterNumber, IReadOnlyList<VerseDto> Verses, IReadOnlyList<PericopeDto> Pericopes)`
+  - [x] `VerseDto(int VerseNumber, string Text, int Ari, bool IsBookmarked, HighlightColor? Highlight)`
+  - [x] `PericopeDto(int BeforeVerse, string Title, IReadOnlyList<string> Parallels)`
+  - [x] `BibleVersionDto(string Id, string Title, string Language, string Description, int TotalBooks)`
+  - [x] `SearchResultDto(VerseReference Reference, string VersionId, string BookName, int Chapter, int Verse, string Snippet, double Score)`
+  - [x] `BookmarkDto`, `HighlightDto`, `ReadingPositionDto`
+- [/] **Use Cases: Bible Reading & Navigation**
+  - [x] `GetChapterQuery` + `GetChapterHandler` + `GetChapterValidator`
   - [ ] `GetVerseQuery` + `GetVerseHandler`
-  - [ ] `GetBookListQuery` + `GetBookListHandler` (returns all books and their chapter counts for a version)
-- [ ] **Use Cases: Version Management & Import**
-  - [ ] `GetInstalledVersionsQuery` + `GetInstalledVersionsHandler`
+  - [/] `GetBookListQuery` + `GetBookListHandler` (book catalog and chapter counts exist; version-specific book data is not implemented)
+- [/] **Use Cases: Version Management & Import**
+  - [x] `GetInstalledVersionsQuery` + `GetInstalledVersionsHandler`
   - [ ] `GetVersionMetadataQuery` + `GetVersionMetadataHandler`
-  - [ ] `ImportYesFileCommand` + `ImportYesFileHandler` (streams `.yes` via `IYesFileReader`, persists via `IBibleRepository`, triggers search indexing)
-  - [ ] `DeleteVersionCommand` + `DeleteVersionHandler`
-- [ ] **Use Cases: Search**
-  - [ ] `SearchBibleQuery` + `SearchBibleHandler` (supports full-text queries, scope filtering by Testament or Book)
-- [ ] **Use Cases: User Data**
-  - [ ] `GetReadingPositionQuery` + `GetReadingPositionHandler`
-  - [ ] `SaveReadingPositionCommand` + `SaveReadingPositionHandler`
-  - [ ] `ToggleBookmarkCommand` + `ToggleBookmarkHandler`
-  - [ ] `SetVerseHighlightCommand` + `SetVerseHighlightHandler`
-  - [ ] `GetBookmarksQuery` + `GetBookmarksHandler`
-- [ ] **Dependency Injection Registration**
-  - [ ] Create `DependencyInjection.cs` with `AddApplication(this IServiceCollection)` registering MediatR, FluentValidation, and Behaviors.
-- [ ] **Unit Tests (`OpenBible.Application.Tests`)**
-  - [ ] Isolated handler tests using `NSubstitute` to mock `IBibleRepository` and `IYesFileReader`.
+  - [/] `PreviewYesFileQuery` + handler provides import metadata preview; a separate installed-version metadata query is not implemented.
+  - [/] `ImportYesFileCommand` + `ImportYesFileHandler` (handler exists; parser and persistent-storage gaps remain)
+  - [x] `DeleteVersionCommand` + `DeleteVersionHandler`
+- [x] **Use Cases: Search**
+  - [x] `SearchBibleQuery` + `SearchBibleHandler` (supports full-text queries, scope filtering by Testament or Book)
+- [x] **Use Cases: User Data**
+  - [x] `GetReadingPositionQuery` + `GetReadingPositionHandler`
+  - [x] `SaveReadingPositionCommand` + `SaveReadingPositionHandler`
+  - [x] `ToggleBookmarkCommand` + `ToggleBookmarkHandler`
+  - [x] `SetVerseHighlightCommand` + `SetVerseHighlightHandler`
+  - [x] `GetBookmarksQuery` + `GetBookmarksHandler`
+- [x] **Dependency Injection Registration**
+  - [x] Create `DependencyInjection.cs` with `AddApplication(this IServiceCollection)` registering MediatR, FluentValidation, and Behaviors.
+- [/] **Unit Tests (`OpenBible.Application.Tests`)**
+  - [x] Isolated handler tests using `NSubstitute` to mock `IBibleRepository` and `IYesFileReader`.
   - [ ] Validation behavior tests (invalid query inputs return failure).
 
 ---
 
 ## Phase 3: Infrastructure Layer (YES Parser & Offline Storage)
 
-- [ ] **`.yes` Binary Format Architecture**
+- [/] **`.yes` Binary Format Architecture**
   - [ ] Document specification in `docs/adr/0003-yes-file-format-spec.md`.
-  - [ ] `YesFileConstants`: Header magic bytes `0x98 0x58`, section names (`version_info`, `book_names`, `verse_text`, `pericope`, `xref`).
-  - [ ] Implement `BigEndianBinaryReader` wrapping `Stream` with `BinaryPrimitives.Read*BigEndian`.
-- [ ] **Section Readers (`Infrastructure/YesFile/SectionReaders/`)**
-  - [ ] `IYesSectionReader` contract (Open-Closed design).
+  - [x] `YesFileConstants`: Header magic bytes `0x98 0x58`, section names (`version_info`, `book_names`, `verse_text`, `pericope`, `xref`).
+  - [x] Implement `BigEndianBinaryReader` wrapping `Stream` with `BinaryPrimitives.Read*BigEndian`.
+- [/] **Section Readers (`Infrastructure/YesFile/SectionReaders/`)**
+  - [x] `IYesSectionReader` contract (Open-Closed design).
   - [ ] `MetadataSectionReader`: parses version title, language, book ordering, text encodings.
   - [ ] `BookNamesSectionReader`: parses full and short book titles.
   - [ ] `VerseTextSectionReader`: streams compressed verse text blocks, unpacks chapter offsets.
   - [ ] `PericopeSectionReader`: extracts pericope headings and parallel passage cross-references.
-- [ ] **Decompression Engine**
-  - [ ] Transparent `.yes.gz` GZip stream wrapper (`System.IO.Compression.GZipStream`).
+- [/] **Decompression Engine**
+  - [/] Transparent `.yes.gz` GZip stream wrapper (`System.IO.Compression.GZipStream` exists; seek-dependent parsing still needs support).
   - [ ] Managed WASM-compatible Snappy block decompressor for YES2 compressed verse text.
-- [ ] **Core Parser**
-  - [ ] Implement `YesFileParser` implementing `IYesFileReader`:
-    - [ ] Validates 8-byte magic header (`0x98 0x58`).
-    - [ ] Reads section index table without loading whole file into memory.
-    - [ ] Asynchronously yields verses and pericopes section-by-section.
+- [/] **Core Parser**
+  - [/] Implement `YesFileParser` implementing `IYesFileReader`:
+    - [x] Validates the YES magic bytes (`0x98 0x58`) in the 8-byte header.
+    - [x] Reads section index table without loading whole file into memory.
+    - [/] Asynchronously yields verses and pericopes section-by-section (iterator exists; format/decompression and section-reader work remain).
 - [ ] **Offline Storage Implementations**
   - [ ] `IndexedDbBibleRepository` implementing `IBibleRepository` using client-side IndexedDB interop.
   - [ ] `IndexedDbUserDataRepository` implementing `IUserDataRepository` for bookmarks, highlights, and history.
   - [ ] `IndexedDbSearchIndex` implementing `ISearchIndex` with tokenized text search.
-- [ ] **Dependency Injection Registration**
-  - [ ] Create `DependencyInjection.cs` with `AddInfrastructure(this IServiceCollection)` registering parser, repositories, and storage interop.
-- [ ] **Integration Tests (`OpenBible.Infrastructure.Tests`)**
+- [/] **Dependency Injection Registration**
+  - [/] Create `DependencyInjection.cs` with `AddInfrastructure(this IServiceCollection)` registering parser and in-memory repositories/index (browser-persistent storage interop remains unimplemented).
+- [/] **Integration Tests (`OpenBible.Infrastructure.Tests`)**
   - [ ] Create minimal fixture `.yes` test file in `tests/fixtures/sample.yes`.
-  - [ ] Test `YesFileParser` header validation and section parsing against fixture.
+  - [/] Test `YesFileParser` header validation and section parsing (header validation is covered; full fixture section parsing remains).
   - [ ] Test Snappy decompression accuracy against known sample blocks.
-  - [ ] Test Big-Endian integer reading logic.
+  - [x] Test Big-Endian integer reading logic.
 
 ---
 
 ## Phase 4: Presentation Layer (Blazor WASM iOS PWA UI)
 
-- [ ] **Composition Root & PWA Assets**
-  - [ ] `Program.cs`: Register `.AddApplication().AddInfrastructure()`.
-  - [ ] `manifest.webmanifest`: PWA metadata (`display: standalone`, icons, theme colors).
-  - [ ] `index.html`: Apple mobile tags (`apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`, viewport-fit=cover).
-  - [ ] `service-worker.js`: Offline-first caching for WASM assemblies, CSS, and app assets.
-- [ ] **Layout & Styling**
-  - [ ] `MainLayout.razor`: Clean mobile-first app shell.
-  - [ ] iOS Safe Area Insets: CSS handling for notch and home bar (`padding-top: env(safe-area-inset-top)`).
-  - [ ] Theme Support: Automatic light/dark mode based on `prefers-color-scheme` with manual override toggle.
-- [ ] **Page Implementations**
-  - [ ] **`ReaderPage.razor` (Core Bible Reader)**:
-    - [ ] Renders current chapter with book title and chapter number.
-    - [ ] Displays verses with verse numbers, selectable for highlights/bookmarks.
-    - [ ] Displays inline pericope section headings.
-    - [ ] Displays footnotes accessible via tap.
-    - [ ] Swipe left/right touch gesture support for previous/next chapter navigation.
-    - [ ] Quick navigation header (tap book/chapter to open picker).
-  - [ ] **`LibraryPage.razor` (Version Management)**:
-    - [ ] Lists all installed Bible versions.
-    - [ ] Shows active version indicator.
-    - [ ] Allows switching active version with instant reader refresh.
-    - [ ] Version metadata view and delete button.
-  - [ ] **`ImportPage.razor` (File Uploader)**:
-    - [ ] Drag-and-drop or file picker for `.yes` and `.yes.gz` files.
-    - [ ] Pre-parse validation display (Title, Language, Book Count).
+- [x] **Composition Root & PWA Assets**
+  - [x] `Program.cs`: Register `.AddApplication().AddInfrastructure()`.
+  - [x] `manifest.webmanifest`: PWA metadata (`display: standalone`, icons, theme colors).
+  - [x] `index.html`: Apple mobile tags (`apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`, viewport-fit=cover).
+  - [x] `service-worker.js`: Offline-first caching for WASM assemblies, CSS, and app assets.
+- [x] **Layout & Styling**
+  - [x] `MainLayout.razor`: Clean mobile-first app shell.
+  - [x] iOS Safe Area Insets: CSS handling for notch and home bar (`padding-top: env(safe-area-inset-top)`).
+  - [x] Theme Support: Automatic light/dark mode based on `prefers-color-scheme` with manual override toggle.
+- [/] **Page Implementations**
+  - [/] **`ReaderPage.razor` (Core Bible Reader)**:
+    - [x] Renders current chapter with book title and chapter number.
+    - [x] Displays verses with verse numbers, selectable for highlights/bookmarks.
+    - [x] Displays inline pericope section headings.
+    - [ ] Displays footnotes accessible via tap (UI supports footnotes, but the YES parser does not populate them yet).
+    - [x] Swipe left/right touch gesture support for previous/next chapter navigation.
+    - [x] Quick navigation header (tap book/chapter to open picker).
+  - [x] **`LibraryPage.razor` (Version Management)**:
+    - [x] Lists all installed Bible versions.
+    - [x] Shows active version indicator.
+    - [x] Allows switching active version with reader navigation.
+    - [x] Version metadata view and delete button.
+  - [/] **`ImportPage.razor` (File Uploader)**:
+    - [x] File picker accepts `.yes` and `.yes.gz` files.
+    - [x] Pre-parse validation display (Title, Language, Book Count).
     - [ ] Import progress bar with streaming status.
-  - [ ] **`SearchPage.razor` (Full-Text Search)**:
-    - [ ] Search input with instant or debounced execution.
-    - [ ] Scope filter (All, Old Testament, New Testament, Current Book).
-    - [ ] Paginated or virtualized search result list with query keyword highlighting.
-    - [ ] Tap result jumps directly to reader at that verse reference.
-- [ ] **Reusable Presentational Components**
-  - [ ] `ChapterView.razor`: Virtualized or smooth-scrolling verse list.
-  - [ ] `VerseDisplay.razor`: Formatted verse text, highlight color background, footnote markers.
-  - [ ] `BookSelector.razor`: Modal / bottom drawer to pick Book (OT/NT grid) and Chapter number.
-  - [ ] `VerseActionSheet.razor`: Bottom drawer on verse tap (Highlight colors, Bookmark, Copy text).
-  - [ ] `SearchResultList.razor`: Search results renderer with ARI jump link.
-  - [ ] `LoadingSpinner.razor` and `ErrorDisplay.razor`.
+  - [/] **`SearchPage.razor` (Full-Text Search)**:
+    - [x] Search input with debounced execution.
+    - [x] Scope filter (All, Old Testament, New Testament, Current Book).
+    - [/] Query keyword highlighting is implemented; pagination or virtualization remains.
+    - [x] Tap result jumps directly to reader at that verse reference.
+- [x] **Reusable Presentational Components**
+  - [x] `ChapterView.razor`: Renders chapter verses and pericope headings; reader supports smooth verse scrolling.
+  - [x] `VerseDisplay.razor`: Formatted verse text, highlight color background, footnote markers.
+  - [x] `BookSelector.razor`: Modal / bottom drawer to pick Book (OT/NT grid) and Chapter number.
+  - [x] `VerseActionSheet.razor`: Bottom drawer on verse tap (Highlight colors, Bookmark, Copy text).
+  - [x] `SearchResultList.razor`: Search results renderer with ARI jump link.
+  - [x] `LoadingSpinner.razor` and `ErrorDisplay.razor`.
 
 ---
 
 ## Phase 5: Polish, Release & Performance
 
-- [ ] **Reading Position Auto-Resume**
-  - [ ] Persist current reading position on chapter navigation.
-  - [ ] Automatically load last-read passage on app startup.
+- [x] **Reading Position Auto-Resume**
+  - [x] Persist current reading position on chapter navigation.
+  - [x] Automatically load last-read passage on app startup.
 - [ ] **Memory & Performance Optimization**
   - [ ] Enable Blazor WASM IL trimming and Brotli compression in Release mode.
   - [ ] Profile memory during large `.yes` file imports (ensure streaming without memory spikes).
-- [ ] **Error Boundaries & Resilience**
-  - [ ] Add Blazor `<ErrorBoundary>` in layout for graceful crash recovery.
+- [x] **Error Boundaries & Resilience**
+  - [x] Add Blazor `<ErrorBoundary>` in layout for graceful crash recovery.
 - [ ] **CI Workflow & Documentation**
   - [ ] Create `.github/workflows/ci.yml` (Runs `dotnet build` + `dotnet test` on PRs and pushes).
   - [ ] Complete `README.md` with screenshots and usage guides.
 - [ ] **End-to-End Offline Verification**
   - [ ] Install PWA on iOS Safari / Android Chrome.
   - [ ] Import `.yes` file -> Navigate chapters -> Highlight verse -> Search -> Disconnect network -> Reload and verify complete offline functionality.
-
