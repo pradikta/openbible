@@ -103,6 +103,5 @@ Verse text may start with `@@` and then contain inline markers. The parser store
 ### Known gaps
 
 - Inline links inside footnote and cross-reference content (for example `@<to:Gen.3.3@>` ... `@/`) are flattened to their inner text: they are not navigable yet, and there is no tap-to-open note dialog.
-- `.yes.gz` input is decompressed with `GZipStream`, which is not seekable, so random section access still fails. Supporting it needs a bounded spool or a forward-only import strategy that does not buffer the whole file in memory.
 
 - Fixtures and offline tests are required before claiming support for real-world YES2 files.

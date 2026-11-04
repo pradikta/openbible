@@ -2,6 +2,7 @@ using OpenBible.Domain.Enums;
 using OpenBible.Domain.Exceptions;
 using OpenBible.Infrastructure.YesFile;
 using System.Buffers.Binary;
+using System.IO.Compression;
 using System.Text;
 using Xunit;
 
@@ -243,4 +244,96 @@ public sealed class YesFileParserTests
         BinaryPrimitives.WriteInt32BigEndian(bytes, value);
         stream.Write(bytes);
     }
+
+    private static MemoryStream CreateGZipYes2File(params (string Name, byte[] Content)[] sections)
+    {
+        var yesFile = Yes2TestFile.Create(sections);
+        var compressed = new MemoryStream();
+        using (var gzip = new GZipStream(compressed, CompressionMode.Compress, leaveOpen: true))
+        {
+            yesFile.Position = 0;
+            yesFile.CopyTo(gzip);
+        }
+        compressed.Position = 0;
+        return compressed;
+    }
+
+    [Fact]
+    public async Task ReadMetadataAsync_GZipCompressedYes2_ReadsMetadata()
+    {
+        var metadata = CreateBintexMap(("shortName", "KJV"), ("longName", "King James Version"),
+            ("locale", "en"), ("description", "English translation"));
+        using var stream = CreateGZipYes2File(("versionInfo", metadata), ("booksInfo", [0, 0, 0, 0]));
+
+        var version = await _parser.ReadMetadataAsync(stream);
+
+        Assert.Equal("kjv", version.Id);
+        Assert.Equal("King James Version", version.Title);
+        Assert.Equal("en", version.Language);
+        Assert.Equal("English translation", version.Description);
+    }
+
+    [Fact]
+    public async Task ReadVersesAsync_GZipCompressedYes2_ReadsVerses()
+    {
+        var metadata = CreateBintexMap(("shortName", "TST"), ("longName", "Test"), ("locale", "en"));
+        var books = CreateBooksInfo();
+        using var stream = CreateGZipYes2File(
+            ("versionInfo", metadata),
+            ("booksInfo", books),
+            ("text", [1, (byte)'A']));
+        var verses = new List<OpenBible.Domain.Entities.Verse>();
+
+        await foreach (var verse in _parser.ReadVersesAsync(stream))
+        {
+            verses.Add(verse);
+        }
+
+        var verseResult = Assert.Single(verses);
+        Assert.Equal("A", verseResult.Text);
+        Assert.Equal(0, (int)verseResult.Reference.Book);
+        Assert.Equal(1, verseResult.Reference.Chapter);
+        Assert.Equal(1, verseResult.Reference.Verse);
+    }
+
+    [Fact]
+    public async Task ReadPericopesAsync_GZipCompressedYes2_ReadsPericopes()
+    {
+        var metadata = CreateBintexMap(("shortName", "TST"), ("longName", "Test"), ("locale", "en"));
+        var books = CreateBooksInfo();
+        var pericopes = CreateSimplePericopeSection();
+        using var stream = CreateGZipYes2File(
+            ("versionInfo", metadata),
+            ("booksInfo", books),
+            ("pericopes", pericopes));
+        var pericopeList = new List<OpenBible.Domain.Entities.Pericope>();
+
+        await foreach (var pericope in _parser.ReadPericopesAsync(stream))
+        {
+            pericopeList.Add(pericope);
+        }
+
+        var onlyPericope = Assert.Single(pericopeList);
+        Assert.Equal("The Creation", onlyPericope.Title);
+    }
+
+    private static byte[] CreateSimplePericopeSection()
+    {
+        using var stream = new MemoryStream();
+        stream.WriteByte(2); // data format version
+        Yes2TestFile.WriteInt32(stream, 0); // index size
+        Yes2TestFile.WriteInt32(stream, 1); // entry count
+
+        // ARI for Genesis 1:1 = (0 << 16) | (1 << 8) | 1 = 0x000101
+        Yes2TestFile.WriteInt32(stream, 0x000101);
+        Yes2TestFile.WriteInt32(stream, 0); // offset
+
+        // Block at offset 0
+        stream.WriteByte(4); // block version
+        stream.Write(Yes2TestFile.EncodeString("The Creation"));
+        stream.WriteByte(0); // parallel count
+
+        return stream.ToArray();
+    }
+
 }

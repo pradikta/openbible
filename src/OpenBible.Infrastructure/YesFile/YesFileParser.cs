@@ -150,6 +150,8 @@ public sealed class YesFileParser : IYesFileReader
         return XRefSectionReader.Read(content);
     }
 
+    private const long MaxDecompressedBytes = 100L * 1024 * 1024; // 100 MB safety guard
+
     private static Stream PrepareStream(Stream stream)
     {
         if (!stream.CanRead)
@@ -166,7 +168,19 @@ public sealed class YesFileParser : IYesFileReader
 
             if (b1 == 0x1F && b2 == 0x8B)
             {
-                return new GZipStream(stream, CompressionMode.Decompress, leaveOpen: true);
+                // GZipStream is forward-only and non-seekable, which breaks random section access.
+                // Decompress into a seekable MemoryStream (bounded spool) so every section reader
+                // can seek independently. The size guard prevents OOM on absurdly large inputs.
+                using var gzip = new GZipStream(stream, CompressionMode.Decompress, leaveOpen: true);
+                var decompressed = new MemoryStream();
+                gzip.CopyTo(decompressed, checked((int)MaxDecompressedBytes));
+                if (decompressed.Length > MaxDecompressedBytes)
+                {
+                    throw new YesFileCorruptException($".yes.gz decompressed size exceeds {MaxDecompressedBytes / (1024 * 1024)} MB.");
+                }
+
+                decompressed.Position = 0;
+                return decompressed;
             }
         }
 
