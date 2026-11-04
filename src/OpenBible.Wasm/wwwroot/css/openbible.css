@@ -260,10 +260,6 @@ a.primary-btn {
     flex-shrink: 0;
 }
 
-.proxy-settings {
-    margin: 0.75rem 0;
-}
-
 .error-text {
     color: var(--ob-danger);
 }

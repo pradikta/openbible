@@ -10,31 +10,17 @@ public sealed class PersistentAppSettingsRepository(IPersistentStore store) : IA
 {
     private const string Key = "openbible.settings";
     private string? _defaultVersionId;
-    private string? _downloadProxyUrl;
 
     public Task<string?> GetDefaultVersionIdAsync(CancellationToken ct = default) => Task.FromResult(_defaultVersionId);
-
-    public Task<string?> GetDownloadProxyUrlAsync(CancellationToken ct = default) => Task.FromResult(_downloadProxyUrl);
 
     public Task SetDefaultVersionIdAsync(string? versionId, CancellationToken ct = default)
     {
         _defaultVersionId = versionId;
-        return SaveAsync(ct);
-    }
-
-    public Task SetDownloadProxyUrlAsync(string? proxyUrlTemplate, CancellationToken ct = default)
-    {
-        _downloadProxyUrl = string.IsNullOrWhiteSpace(proxyUrlTemplate) ? null : proxyUrlTemplate.Trim();
-        return SaveAsync(ct);
-    }
-
-    private Task SaveAsync(CancellationToken ct) =>
-        store.SetAsync(
+        return store.SetAsync(
             Key,
-            JsonSerializer.Serialize(
-                new StoredAppSettings(_defaultVersionId, _downloadProxyUrl),
-                PersistenceJsonContext.Default.StoredAppSettings),
+            JsonSerializer.Serialize(new StoredAppSettings(versionId), PersistenceJsonContext.Default.StoredAppSettings),
             ct);
+    }
 
     /// <summary>Loads persisted settings; a corrupt value is ignored.</summary>
     public async Task RestoreAsync(CancellationToken ct = default)
@@ -47,9 +33,7 @@ public sealed class PersistentAppSettingsRepository(IPersistentStore store) : IA
 
         try
         {
-            var stored = JsonSerializer.Deserialize(json, PersistenceJsonContext.Default.StoredAppSettings);
-            _defaultVersionId = stored?.DefaultVersionId;
-            _downloadProxyUrl = stored?.DownloadProxyUrl;
+            _defaultVersionId = JsonSerializer.Deserialize(json, PersistenceJsonContext.Default.StoredAppSettings)?.DefaultVersionId;
         }
         catch (JsonException)
         {

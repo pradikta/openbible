@@ -21,7 +21,7 @@ public sealed class DownloadVersionHandler(IVersionCatalog catalog, IVersionDown
         Stream stream;
         try
         {
-            stream = await downloader.DownloadAsync(entry.DownloadUrl, ct).ConfigureAwait(false);
+            stream = await downloader.DownloadAsync(entry.PresetName, ct).ConfigureAwait(false);
         }
         catch (InvalidOperationException ex)
         {

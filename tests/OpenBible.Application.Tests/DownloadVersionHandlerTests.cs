@@ -2,7 +2,6 @@ using MediatR;
 using NSubstitute;
 using OpenBible.Application.BibleVersions.Commands.DownloadVersion;
 using OpenBible.Application.BibleVersions.Commands.ImportYesFile;
-using OpenBible.Application.BibleVersions.Commands.SetDownloadProxy;
 using OpenBible.Application.BibleVersions.DTOs;
 using OpenBible.Application.Common.Models;
 using OpenBible.Domain.Entities;
@@ -33,7 +32,7 @@ public sealed class DownloadVersionHandlerTests
     [Fact]
     public async Task Download_WhenDownloaderFails_ReturnsFailureMessage()
     {
-        _downloader.DownloadAsync("https://host/kjv", Arg.Any<CancellationToken>())
+        _downloader.DownloadAsync("kjv", Arg.Any<CancellationToken>())
             .Returns<Stream>(_ => throw new InvalidOperationException("No download proxy is configured."));
 
         var result = await new DownloadVersionHandler(_catalog, _downloader, _sender)
@@ -46,7 +45,7 @@ public sealed class DownloadVersionHandlerTests
     [Fact]
     public async Task Download_Success_ImportsDownloadedStream()
     {
-        _downloader.DownloadAsync("https://host/kjv", Arg.Any<CancellationToken>()).Returns(new MemoryStream([1]));
+        _downloader.DownloadAsync("kjv", Arg.Any<CancellationToken>()).Returns(new MemoryStream([1]));
         var dto = new BibleVersionDto("kjv", "King James", "en", "", 66);
         _sender.Send(Arg.Any<ImportYesFileCommand>(), Arg.Any<CancellationToken>()).Returns(Result<BibleVersionDto>.Success(dto));
 
@@ -56,12 +55,4 @@ public sealed class DownloadVersionHandlerTests
         Assert.True(result.IsSuccess);
         await _sender.Received(1).Send(Arg.Any<ImportYesFileCommand>(), Arg.Any<CancellationToken>());
     }
-
-    [Theory]
-    [InlineData("https://p.test/?url={url}", true)]
-    [InlineData("", true)]
-    [InlineData("https://p.test/", false)]
-    [InlineData("ftp://p.test/{url}", false)]
-    public void ProxyValidator_ChecksTemplate(string value, bool valid) =>
-        Assert.Equal(valid, new SetDownloadProxyValidator().Validate(new SetDownloadProxyCommand(value)).IsValid);
 }

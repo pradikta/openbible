@@ -21,6 +21,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenBible.Application.Tests
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenBible.Infrastructure.Tests", "tests\OpenBible.Infrastructure.Tests\OpenBible.Infrastructure.Tests.csproj", "{1B28DC3C-53F2-491B-97F9-D92B92CC6B9C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenBible.Server", "src\OpenBible.Server\OpenBible.Server.csproj", "{40339BC9-16EA-48C2-8795-DEF00A2BF041}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -115,6 +117,18 @@ Global
 		{1B28DC3C-53F2-491B-97F9-D92B92CC6B9C}.Release|x64.Build.0 = Release|Any CPU
 		{1B28DC3C-53F2-491B-97F9-D92B92CC6B9C}.Release|x86.ActiveCfg = Release|Any CPU
 		{1B28DC3C-53F2-491B-97F9-D92B92CC6B9C}.Release|x86.Build.0 = Release|Any CPU
+		{40339BC9-16EA-48C2-8795-DEF00A2BF041}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{40339BC9-16EA-48C2-8795-DEF00A2BF041}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{40339BC9-16EA-48C2-8795-DEF00A2BF041}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{40339BC9-16EA-48C2-8795-DEF00A2BF041}.Debug|x64.Build.0 = Debug|Any CPU
+		{40339BC9-16EA-48C2-8795-DEF00A2BF041}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{40339BC9-16EA-48C2-8795-DEF00A2BF041}.Debug|x86.Build.0 = Debug|Any CPU
+		{40339BC9-16EA-48C2-8795-DEF00A2BF041}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{40339BC9-16EA-48C2-8795-DEF00A2BF041}.Release|Any CPU.Build.0 = Release|Any CPU
+		{40339BC9-16EA-48C2-8795-DEF00A2BF041}.Release|x64.ActiveCfg = Release|Any CPU
+		{40339BC9-16EA-48C2-8795-DEF00A2BF041}.Release|x64.Build.0 = Release|Any CPU
+		{40339BC9-16EA-48C2-8795-DEF00A2BF041}.Release|x86.ActiveCfg = Release|Any CPU
+		{40339BC9-16EA-48C2-8795-DEF00A2BF041}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -127,5 +141,6 @@ Global
 		{E298091F-9B12-4BCE-ACA6-1FA266B5B344} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{C45320DA-4C07-429D-A135-7E936CC0BEF8} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{1B28DC3C-53F2-491B-97F9-D92B92CC6B9C} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{40339BC9-16EA-48C2-8795-DEF00A2BF041} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

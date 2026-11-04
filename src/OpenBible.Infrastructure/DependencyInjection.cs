@@ -37,8 +37,6 @@ public static class DependencyInjection
         services.AddSingleton<PersistentAppSettingsRepository>();
         services.AddSingleton<IAppSettingsRepository>(sp => sp.GetRequiredService<PersistentAppSettingsRepository>());
         services.AddSingleton<IVersionCatalog, BundledVersionCatalog>();
-        services.AddSingleton<IVersionDownloader>(sp =>
-            new HttpVersionDownloader(new HttpClient(), sp.GetRequiredService<IAppSettingsRepository>()));
 
         services.AddSingleton<ISearchIndex, SimpleSearchIndex>();
         services.AddSingleton<SampleScriptureSeeder>();

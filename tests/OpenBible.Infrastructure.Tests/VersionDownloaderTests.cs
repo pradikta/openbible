@@ -1,8 +1,5 @@
 using System.Net;
-using OpenBible.Domain.Interfaces;
 using OpenBible.Infrastructure.Catalog;
-using OpenBible.Infrastructure.Persistence;
-using OpenBible.Infrastructure.Persistence.Storage;
 using Xunit;
 
 namespace OpenBible.Infrastructure.Tests;
@@ -20,55 +17,34 @@ public sealed class VersionDownloaderTests
         }
     }
 
-    private static async Task<IAppSettingsRepository> SettingsAsync(string? proxy)
-    {
-        var settings = new PersistentAppSettingsRepository(new InMemoryPersistentStore());
-        await settings.SetDownloadProxyUrlAsync(proxy);
-        return settings;
-    }
+    private static HttpVersionDownloader Create(StubHandler handler) =>
+        new(new HttpClient(handler) { BaseAddress = new Uri("https://app.test/") });
 
     [Fact]
-    public async Task Download_WithoutProxy_Throws()
-    {
-        var downloader = new HttpVersionDownloader(new HttpClient(new StubHandler(HttpStatusCode.OK, [])), await SettingsAsync(null));
-
-        await Assert.ThrowsAsync<InvalidOperationException>(() => downloader.DownloadAsync("https://host/a"));
-    }
-
-    [Fact]
-    public async Task Download_UsesEscapedUrlInProxyTemplate()
+    public async Task Download_CallsServerEndpointAndBuffersBody()
     {
         var handler = new StubHandler(HttpStatusCode.OK, [1, 2, 3]);
-        var downloader = new HttpVersionDownloader(new HttpClient(handler), await SettingsAsync("https://proxy.test/?url={url}"));
 
-        await using var stream = await downloader.DownloadAsync("https://host/a?x=1");
+        await using var stream = await Create(handler).DownloadAsync("in-tb");
 
-        Assert.Equal("https://proxy.test/?url=https%3A%2F%2Fhost%2Fa%3Fx%3D1", handler.LastRequest!.ToString());
+        Assert.Equal("https://app.test/api/catalog/download/in-tb", handler.LastRequest!.ToString());
         Assert.Equal(3, stream.Length);
+        Assert.Equal(0, stream.Position);
     }
 
     [Fact]
-    public async Task Download_OnHttpError_Throws()
+    public async Task Download_WhenEndpointMissing_ExplainsFallback()
     {
-        var downloader = new HttpVersionDownloader(
-            new HttpClient(new StubHandler(HttpStatusCode.Forbidden, [])),
-            await SettingsAsync("https://proxy.test/?url={url}"));
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => Create(new StubHandler(HttpStatusCode.NotFound, [])).DownloadAsync("x"));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => downloader.DownloadAsync("https://host/a"));
+        Assert.Contains("Manual download", ex.Message);
     }
 
     [Fact]
-    public async Task Settings_KeepProxyAndDefaultTogether()
+    public async Task Download_OnServerError_Throws()
     {
-        var store = new InMemoryPersistentStore();
-        var first = new PersistentAppSettingsRepository(store);
-        await first.SetDownloadProxyUrlAsync("https://p/?url={url}");
-        await first.SetDefaultVersionIdAsync("kjv");
-
-        var second = new PersistentAppSettingsRepository(store);
-        await second.RestoreAsync();
-
-        Assert.Equal("kjv", await second.GetDefaultVersionIdAsync());
-        Assert.Equal("https://p/?url={url}", await second.GetDownloadProxyUrlAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => Create(new StubHandler(HttpStatusCode.BadGateway, [])).DownloadAsync("x"));
     }
 }

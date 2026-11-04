@@ -270,7 +270,7 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
 - [/] Parallel version panes (a per-verse compare page exists; side-by-side chapter panes remain)
 - [x] Notes, labels, progress marks, bundled sample reading plans and daily devotions, display settings, share, go-to-reference (stored under new key `openbible.study`; `/markers`, `/plans`, `/devotion`, `/compare`, `/settings`)
 - [ ] Downloadable reading plans and devotions (only bundled samples exist)
-- [x] Version management: Library lists versions, sets a default (key `openbible.settings`), links to Import, and shows the bundled official catalog (251 presets). "Install" downloads through a user-configured CORS proxy (`docs/cloudflare-worker-proxy.js`, URL template with `{url}` stored in `openbible.settings`) and imports directly into the database; without a proxy, "Manual download" + Import is the fallback because catalog hosts send no CORS headers.
+- [x] Version management: Library lists versions, sets a default (key `openbible.settings`), links to Import, and shows the bundled official catalog (251 presets). "Install" downloads through the new `OpenBible.Server` ASP.NET Core host (`/api/catalog/download/{preset}`, bundled presets and official hosts only; it also serves the WASM files) and imports directly into the database; on static hosting, "Manual download" + Import is the fallback because catalog hosts send no CORS headers. The parser now reads real YES2 files (index size counts records only) and re-sniffs gzip on each read.
 - [ ] Backup/export and sync of user data
 - [ ] Songs
 
