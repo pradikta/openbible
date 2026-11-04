@@ -1,0 +1,127 @@
+@page "/markers"
+@inject IMediator Mediator
+
+<PageTitle>Notes, labels &amp; marks</PageTitle>
+
+<section class="panel">
+    <h1>Notes, labels &amp; marks</h1>
+    @if (!_loaded)
+    {
+        <LoadingSpinner />
+    }
+    else
+    {
+        <h2>Progress marks</h2>
+        @if (_marks.Count == 0)
+        {
+            <p class="muted">None set. Use the verse menu to set a mark.</p>
+        }
+        @foreach (var m in _marks)
+        {
+            <div class="marker-row">
+                <a href="@($"read/{m.VersionId}/{(int)m.BookId}/{m.Chapter}/{m.Verse}")">Mark @m.Slot: @m.BookName @m.Chapter:@m.Verse</a>
+                <button type="button" class="text-btn" @onclick="() => ClearMark(m.Slot)">Clear</button>
+            </div>
+        }
+
+        <h2>Notes</h2>
+        @if (_notes.Count == 0)
+        {
+            <p class="muted">No notes yet.</p>
+        }
+        @foreach (var n in _notes)
+        {
+            <div class="marker-row">
+                <a href="@($"read/{n.VersionId}/{(int)n.BookId}/{n.Chapter}/{n.Verse}")">@n.BookName @n.Chapter:@n.Verse</a>
+                <span>@n.Text</span>
+            </div>
+        }
+
+        <h2>Bookmarks</h2>
+        @if (_bookmarks.Count == 0)
+        {
+            <p class="muted">No bookmarks yet.</p>
+        }
+        @foreach (var b in _bookmarks)
+        {
+            <div class="marker-row">
+                <a href="@($"read/{b.VersionId}/{(int)b.BookId}/{b.Chapter}/{b.Verse}")">@b.BookName @b.Chapter:@b.Verse</a>
+            </div>
+        }
+
+        <h2>Labels</h2>
+        <form @onsubmit="AddLabel" class="inline-form">
+            <input @bind="_newLabel" placeholder="New label" maxlength="60" />
+            <button type="submit" class="text-btn">Add</button>
+        </form>
+        @foreach (var l in _labels)
+        {
+            <div class="marker-row">
+                <span>@l.Name</span>
+                <button type="button" class="text-btn" @onclick="() => DeleteLabel(l.Id)">Delete</button>
+            </div>
+        }
+    }
+</section>
+
+@code {
+    private bool _loaded;
+    private string _newLabel = string.Empty;
+    private IReadOnlyList<ProgressMarkDto> _marks = [];
+    private IReadOnlyList<NoteDto> _notes = [];
+    private IReadOnlyList<BookmarkDto> _bookmarks = [];
+    private IReadOnlyList<LabelDto> _labels = [];
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var versions = await Mediator.Send(new GetInstalledVersionsQuery());
+        var notes = new List<NoteDto>();
+        var bookmarks = new List<BookmarkDto>();
+        foreach (var version in versions.IsSuccess ? versions.Value! : [])
+        {
+            var n = await Mediator.Send(new GetNotesQuery(version.Id));
+            if (n.IsSuccess)
+            {
+                notes.AddRange(n.Value!);
+            }
+
+            var b = await Mediator.Send(new GetBookmarksQuery(version.Id));
+            if (b.IsSuccess)
+            {
+                bookmarks.AddRange(b.Value!);
+            }
+        }
+
+        _notes = notes;
+        _bookmarks = bookmarks;
+        var marks = await Mediator.Send(new GetProgressMarksQuery());
+        _marks = marks.IsSuccess ? marks.Value! : [];
+        var labels = await Mediator.Send(new GetLabelsQuery());
+        _labels = labels.IsSuccess ? labels.Value! : [];
+        _loaded = true;
+    }
+
+    private async Task ClearMark(int slot)
+    {
+        await Mediator.Send(new ClearProgressMarkCommand(slot));
+        await LoadAsync();
+    }
+
+    private async Task AddLabel()
+    {
+        if (!string.IsNullOrWhiteSpace(_newLabel))
+        {
+            await Mediator.Send(new CreateLabelCommand(_newLabel));
+            _newLabel = string.Empty;
+            await LoadAsync();
+        }
+    }
+
+    private async Task DeleteLabel(Guid id)
+    {
+        await Mediator.Send(new DeleteLabelCommand(id));
+        await LoadAsync();
+    }
+}

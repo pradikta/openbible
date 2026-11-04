@@ -124,7 +124,7 @@ a.primary-btn {
     bottom: 0;
     z-index: 30;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 0.25rem;
     padding: 0.4rem 0.5rem calc(0.45rem + env(safe-area-inset-bottom));
     background: var(--ob-header);
@@ -378,3 +378,18 @@ a.primary-btn {
     .book-grid { grid-template-columns: repeat(3, 1fr); }
     .chapter-grid { grid-template-columns: repeat(5, 1fr); }
 }
+
+.more-list { list-style: none; padding: 0; }
+.more-list li { border-bottom: 1px solid var(--ob-border); }
+.more-list a { display: block; padding: 0.9rem 0.25rem; }
+.plan-card, .compare-item, .marker-row { padding: 0.6rem 0; border-bottom: 1px solid var(--ob-border); }
+.marker-row { display: flex; gap: 0.75rem; justify-content: space-between; align-items: center; }
+.plan-days { list-style: none; padding: 0; }
+.plan-days li { padding: 0.5rem 0; border-bottom: 1px solid var(--ob-border); }
+.plan-reading { display: block; margin-left: 1.6rem; }
+.sheet-sub { margin: 0.5rem 0 0.25rem; font-size: 0.9rem; }
+.study-box textarea { width: 100%; box-sizing: border-box; }
+.label-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.4rem 0; }
+.chip { border: 1px solid var(--ob-border); border-radius: 999px; padding: 0.15rem 0.7rem; background: transparent; color: inherit; }
+.chip.selected { background: var(--ob-accent, #2f6fed); color: #fff; }
+.inline-form { display: flex; gap: 0.5rem; }

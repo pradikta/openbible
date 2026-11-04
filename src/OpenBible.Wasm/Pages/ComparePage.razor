@@ -1,0 +1,43 @@
+@page "/compare/{Book:int}/{Chapter:int}/{Verse:int}"
+@inject IMediator Mediator
+
+<PageTitle>Compare</PageTitle>
+
+<section class="panel">
+    <h1>Compare @BookCatalogName @Chapter:@Verse</h1>
+    @if (_items is null)
+    {
+        <LoadingSpinner />
+    }
+    else if (_items.Count == 0)
+    {
+        <p class="muted">No installed translation contains this verse.</p>
+    }
+    else
+    {
+        @foreach (var item in _items)
+        {
+            <div class="compare-item">
+                <strong>@item.VersionTitle</strong>
+                <p>@item.Text</p>
+            </div>
+        }
+    }
+</section>
+
+@code {
+    [Parameter] public int Book { get; set; }
+    [Parameter] public int Chapter { get; set; }
+    [Parameter] public int Verse { get; set; }
+
+    private IReadOnlyList<VerseComparisonDto>? _items;
+
+    private string BookCatalogName => OpenBible.Domain.Catalog.BibleBookCatalog.Get((BookId)Book).FullName;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _items = null;
+        var result = await Mediator.Send(new CompareVerseQuery((BookId)Book, Chapter, Verse));
+        _items = result.IsSuccess ? result.Value! : [];
+    }
+}

@@ -219,7 +219,7 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
     - [x] Renders current chapter with book title and chapter number.
     - [x] Displays verses with verse numbers, selectable for highlights/bookmarks.
     - [x] Displays inline pericope section headings.
-    - [/] Footnote and cross-reference marks render inline (superscript index for notes, `※` for cross-references) with the note text in a tooltip; a tap-to-open note dialog remains.
+    - [/] Footnote and cross-reference marks render inline (superscript index for notes, `※` for cross-references) with the note text in a tooltip; footnotes are also listed under a "Footnotes" heading in the verse action sheet.
     - [x] Swipe left/right touch gesture support for previous/next chapter navigation.
     - [x] Quick navigation header (tap book/chapter to open picker).
   - [x] **`LibraryPage.razor` (Version Management)**:
@@ -234,7 +234,7 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
   - [/] **`SearchPage.razor` (Full-Text Search)**:
     - [x] Search input with debounced execution.
     - [x] Scope filter (All, Old Testament, New Testament, Current Book).
-    - [/] Query keyword highlighting is implemented; pagination or virtualization remains.
+    - [x] Query keyword highlighting and client-side pagination ("Show more", 50 per page).
     - [x] Tap result jumps directly to reader at that verse reference.
 - [x] **Reusable Presentational Components**
   - [x] `ChapterView.razor`: Renders chapter verses and pericope headings; reader supports smooth verse scrolling.
@@ -267,9 +267,9 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
 
 ## Not yet in scope (androidbible features without a plan item)
 
-- [ ] Parallel version panes
-- [ ] Notes with verse links and labels for bookmarks
-- [ ] Reading plans and devotionals
+- [/] Parallel version panes (a per-verse compare page exists; side-by-side chapter panes remain)
+- [x] Notes, labels, progress marks, bundled sample reading plans and daily devotions, display settings, share, go-to-reference (stored under new key `openbible.study`; `/markers`, `/plans`, `/devotion`, `/compare`, `/settings`)
+- [ ] Downloadable reading plans and devotions (only bundled samples exist)
 - [ ] Version catalog download (only local .yes import exists)
 - [ ] Backup/export and sync of user data
 - [ ] Songs

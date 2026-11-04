@@ -1,0 +1,86 @@
+@page "/plans"
+@page "/plans/{PlanId}"
+@inject IMediator Mediator
+
+<PageTitle>Reading plans</PageTitle>
+
+<section class="panel">
+    <h1>Reading plans</h1>
+    @if (PlanId is null)
+    {
+        @foreach (var plan in _plans)
+        {
+            <div class="plan-card">
+                <a href="@($"plans/{plan.Id}")"><strong>@plan.Title</strong></a>
+                <p class="muted">@plan.Description</p>
+                <progress max="@plan.TotalDays" value="@plan.CompletedDays"></progress>
+                <span class="muted">@plan.CompletedDays / @plan.TotalDays days</span>
+            </div>
+        }
+    }
+    else if (_detail is null)
+    {
+        <p class="muted">@(_error ?? "Loading...")</p>
+    }
+    else
+    {
+        <p><a href="plans">&larr; All plans</a></p>
+        <h2>@_detail.Title</h2>
+        <p class="muted">@_detail.Description</p>
+        <ul class="plan-days">
+            @foreach (var day in _detail.Days)
+            {
+                <li>
+                    <label>
+                        <input type="checkbox" checked="@day.IsCompleted" @onchange="() => Toggle(day.Day)" />
+                        Day @day.Day
+                    </label>
+                    @foreach (var reading in day.Readings)
+                    {
+                        <a class="plan-reading" href="@ReadLink(reading)">@reading.BookName @reading.Chapter</a>
+                    }
+                </li>
+            }
+        </ul>
+    }
+</section>
+
+@code {
+    [Parameter] public string? PlanId { get; set; }
+
+    private IReadOnlyList<PlanSummaryDto> _plans = [];
+    private PlanDetailDto? _detail;
+    private string? _error;
+    private string _versionId = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var versions = await Mediator.Send(new GetInstalledVersionsQuery());
+        _versionId = versions.IsSuccess ? versions.Value?.FirstOrDefault()?.Id ?? string.Empty : string.Empty;
+        _detail = null;
+        _error = null;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        if (PlanId is null)
+        {
+            var list = await Mediator.Send(new GetReadingPlansQuery());
+            _plans = list.IsSuccess ? list.Value! : [];
+            return;
+        }
+
+        var result = await Mediator.Send(new GetReadingPlanQuery(PlanId));
+        _detail = result.IsSuccess ? result.Value : null;
+        _error = result.IsSuccess ? null : result.Error;
+    }
+
+    private async Task Toggle(int day)
+    {
+        await Mediator.Send(new ToggleReadingPlanDayCommand(PlanId!, day));
+        await LoadAsync();
+    }
+
+    private string ReadLink(PlanReadingDto r) => $"read/{_versionId}/{(int)r.BookId}/{r.Chapter}/{r.StartVerse}";
+}

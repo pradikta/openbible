@@ -287,7 +287,7 @@ xUnit, NSubstitute and FluentAssertions. Domain tests cover ARI math and value-o
 
 ## Roadmap
 
-Open items, tracked in [PLAN.md](PLAN.md): `GetVerseQuery` and version-metadata query, import progress and search pagination, CI workflow, and end-to-end offline verification.
+Study features (notes, labels, progress marks, bundled sample reading plans and devotions, verse compare, display settings, share and go-to-reference) are implemented through MediatR handlers in `OpenBible.Application/Study` and persisted under the IndexedDB key `openbible.study`. Open items, tracked in [PLAN.md](PLAN.md): `GetVerseQuery` and version-metadata query, import progress, side-by-side chapter panes, CI workflow, and end-to-end offline verification.
 
 ## Credits and license
 

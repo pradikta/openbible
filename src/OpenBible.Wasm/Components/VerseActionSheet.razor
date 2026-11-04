@@ -12,6 +12,7 @@
         <p class="verse-sheet-text">@Verse.Text</p>
         @if (Verse.Footnotes is { Count: > 0 })
         {
+            <h3 class="sheet-sub">Footnotes</h3>
             <ol>
                 @foreach (var note in Verse.Footnotes)
                 {
@@ -33,6 +34,28 @@
             <button type="button" class="text-btn" @onclick="Copy">Copy</button>
             <button type="button" class="text-btn" @onclick="Share">Share</button>
         </div>
+        <div class="study-box">
+            <textarea @bind="_noteText" placeholder="Note" rows="2"></textarea>
+            <button type="button" class="text-btn" @onclick="SaveNote">Save note</button>
+            @if (_noteId is not null && _labels.Count > 0)
+            {
+                <div class="label-chips">
+                    @foreach (var label in _labels)
+                    {
+                        <button type="button" class="chip @(_noteLabels.Contains(label.Id) ? "selected" : null)"
+                                @onclick="() => ToggleLabel(label.Id)">@label.Name</button>
+                    }
+                </div>
+            }
+        </div>
+        <div class="row-actions">
+            @for (var slot = 1; slot <= 5; slot++)
+            {
+                var s = slot;
+                <button type="button" class="text-btn" @onclick="() => SetMark(s)">Mark @s</button>
+            }
+            <a class="text-btn" href="@($"compare/{(int)BookId}/{Chapter}/{Verse.VerseNumber}")">Compare</a>
+        </div>
         @if (!string.IsNullOrWhiteSpace(_status))
         {
             <p class="muted">@_status</p>
@@ -50,6 +73,87 @@
     [Parameter] public EventCallback OnChanged { get; set; }
 
     private string? _status;
+    private string _noteText = string.Empty;
+    private Guid? _noteId;
+    private IReadOnlyList<LabelDto> _labels = [];
+    private HashSet<Guid> _noteLabels = [];
+    private int _loadedVerse = -1;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Verse is null)
+        {
+            _loadedVerse = -1;
+            return;
+        }
+
+        if (_loadedVerse == Verse.VerseNumber)
+        {
+            return;
+        }
+
+        _loadedVerse = Verse.VerseNumber;
+        var notes = await Mediator.Send(new GetNotesQuery(VersionId));
+        var note = notes.IsSuccess
+            ? notes.Value!.FirstOrDefault(n => n.BookId == BookId && n.Chapter == Chapter && n.Verse == Verse.VerseNumber)
+            : null;
+        _noteId = note?.Id;
+        _noteText = note?.Text ?? string.Empty;
+        var labels = await Mediator.Send(new GetLabelsQuery());
+        _labels = labels.IsSuccess ? labels.Value! : [];
+        await LoadNoteLabelsAsync();
+    }
+
+    private async Task LoadNoteLabelsAsync()
+    {
+        if (_noteId is null)
+        {
+            _noteLabels = [];
+            return;
+        }
+
+        var ids = await Mediator.Send(new GetMarkerLabelsQuery(_noteId.Value));
+        _noteLabels = ids.IsSuccess ? [.. ids.Value!] : [];
+    }
+
+    private async Task SaveNote()
+    {
+        if (Verse is null)
+        {
+            return;
+        }
+
+        var result = await Mediator.Send(new SaveNoteCommand(VersionId, BookId, Chapter, Verse.VerseNumber, _noteText));
+        _status = result.IsSuccess ? (string.IsNullOrWhiteSpace(_noteText) ? "Note removed." : "Note saved.") : result.Error;
+        _loadedVerse = -1;
+        await OnParametersSetAsync();
+    }
+
+    private async Task ToggleLabel(Guid labelId)
+    {
+        if (_noteId is null)
+        {
+            return;
+        }
+
+        if (!_noteLabels.Remove(labelId))
+        {
+            _noteLabels.Add(labelId);
+        }
+
+        await Mediator.Send(new SetMarkerLabelsCommand(_noteId.Value, [.. _noteLabels]));
+    }
+
+    private async Task SetMark(int slot)
+    {
+        if (Verse is null)
+        {
+            return;
+        }
+
+        var result = await Mediator.Send(new SetProgressMarkCommand(slot, VersionId, BookId, Chapter, Verse.VerseNumber));
+        _status = result.IsSuccess ? $"Progress mark {slot} set." : result.Error;
+    }
 
     private async Task Highlight(HighlightColor color)
     {

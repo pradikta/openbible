@@ -1,0 +1,40 @@
+@page "/devotion"
+@inject IMediator Mediator
+
+<PageTitle>Devotion</PageTitle>
+
+<section class="panel">
+    <h1>Daily devotion</h1>
+    @if (_devotion is null)
+    {
+        <p class="muted">@(_error ?? "Loading...")</p>
+    }
+    else
+    {
+        <h2>@_devotion.Title</h2>
+        <p>@_devotion.Body</p>
+        <p><a class="primary-btn" href="@($"read/{_versionId}/{(int)_devotion.BookId}/{_devotion.Chapter}/{_devotion.Verse}")">Read @_devotion.BookName @_devotion.Chapter:@_devotion.Verse</a></p>
+    }
+</section>
+
+@code {
+    private DevotionDto? _devotion;
+    private string? _error;
+    private string _versionId = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Mediator.Send(new GetDailyDevotionQuery(DateOnly.FromDateTime(DateTime.Today)));
+        if (result.IsSuccess)
+        {
+            _devotion = result.Value;
+        }
+        else
+        {
+            _error = result.Error;
+        }
+
+        var versions = await Mediator.Send(new GetInstalledVersionsQuery());
+        _versionId = versions.IsSuccess ? versions.Value?.FirstOrDefault()?.Id ?? string.Empty : string.Empty;
+    }
+}
