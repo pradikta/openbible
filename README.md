@@ -32,7 +32,7 @@ The solution builds with zero warnings and all tests pass. Implemented versus pe
 | `.yes` header/metadata/verse parsing with transparent GZip | Implemented (basic) |
 | `.yes` parsing: metadata, books, verse text, `snappy-blocks`, pericopes, footnotes, xrefs, `.yes.gz` | Implemented (see [ADR 0003](docs/adr/0003-yes-file-format-spec.md)) |
 | Persistence | Implemented. In-memory working stores are snapshotted to IndexedDB (JS interop) and restored at startup; the search index is rebuilt on restore |
-| Sample scripture seeding so the reader works out of the box | Implemented |
+| Bundled full KJV (public domain) imported on first run, so the reader works out of the box | Implemented |
 | CI workflow, trimming/Brotli tuning, offline end-to-end verification | Pending |
 
 See [PLAN.md](PLAN.md) for the authoritative checklist.
@@ -61,7 +61,7 @@ flowchart TB
         YES["YesFileParser + section readers<br/>GZip detection"]
         REPO["Bible repository, user-data repository and search index<br/>(all in-memory today)"]
         IDX["SimpleSearchIndex"]
-        SEED["SampleScriptureSeeder"]
+        SEED["BundledBibleSeeder"]
     end
     subgraph App["OpenBible.Application"]
         UC["Commands, Queries, Handlers"]

@@ -8,6 +8,7 @@ using OpenBible.Infrastructure.Catalog;
 using OpenBible.Infrastructure.Persistence;
 using OpenBible.Infrastructure.Persistence.Storage;
 using OpenBible.Wasm;
+using OpenBible.Wasm.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -22,7 +23,12 @@ builder.Services.AddInfrastructure();
 builder.Services.AddSingleton<IVersionDownloader>(
     _ => new HttpVersionDownloader(new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) }));
 
+builder.Services.AddScoped<BundledBibleSeeder>();
+
 var host = builder.Build();
 await host.Services.GetRequiredService<PersistenceInitializer>().RestoreAsync();
-await host.Services.GetRequiredService<SampleScriptureSeeder>().EnsureSeededAsync();
+await using (var scope = host.Services.CreateAsyncScope())
+{
+    await scope.ServiceProvider.GetRequiredService<BundledBibleSeeder>().EnsureSeededAsync();
+}
 await host.RunAsync();

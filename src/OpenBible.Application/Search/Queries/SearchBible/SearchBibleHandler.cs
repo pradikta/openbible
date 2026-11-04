@@ -1,5 +1,6 @@
 using MediatR;
 using OpenBible.Application.Common.Models;
+using OpenBible.Application.Reading.Formatting;
 using OpenBible.Application.Search.DTOs;
 using OpenBible.Domain.Entities;
 using OpenBible.Domain.Enums;
@@ -42,7 +43,7 @@ public sealed class SearchBibleHandler : IRequestHandler<SearchBibleQuery, Resul
             ResolveBookName(version, m.Reference.Book),
             m.Reference.Chapter,
             m.Reference.Verse,
-            m.Text,
+            VerseMarkupFormatter.ToPlainText(m.Text),
             m.Score
         )).ToList();
 

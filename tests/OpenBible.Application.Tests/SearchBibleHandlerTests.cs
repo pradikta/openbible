@@ -45,6 +45,18 @@ public sealed class SearchBibleHandlerTests
     }
 
     [Fact]
+    public async Task Handle_MatchTextHasYesMarkup_ShouldStripItFromSnippet()
+    {
+        _searchIndex
+            .SearchAsync("kjv", "shepherds", Arg.Any<SearchScope>(), Arg.Any<CancellationToken>())
+            .Returns([new SearchMatch(new VerseReference(BookId.Genesis, 46, 32), "kjv", "@@And the men @9are@7 shepherds", 1.0)]);
+
+        var result = await _handler.Handle(new SearchBibleQuery("kjv", "shepherds"), CancellationToken.None);
+
+        Assert.Equal("And the men are shepherds", result.Value![0].Snippet);
+    }
+
+    [Fact]
     public async Task Handle_MatchesFound_ShouldReturnMappedDtos()
     {
         var matches = new[]

@@ -40,7 +40,6 @@ public static class DependencyInjection
 
         services.AddSingleton<ISearchIndex, SimpleSearchIndex>();
         services.AddSingleton<IBackupService, UserDataBackupService>();
-        services.AddSingleton<SampleScriptureSeeder>();
         services.AddSingleton<PersistenceInitializer>();
 
         return services;
