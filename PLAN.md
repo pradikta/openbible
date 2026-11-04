@@ -161,8 +161,8 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
 ## Phase 3: Infrastructure Layer (YES Parser & Offline Storage)
 
 - [/] **`.yes` Binary Format Architecture**
-  - [ ] Document specification in `docs/adr/0003-yes-file-format-spec.md`.
-  - [x] `YesFileConstants`: Header magic bytes `0x98 0x58`, section names (`version_info`, `book_names`, `verse_text`, `pericope`, `xref`).
+- [x] Document specification in `docs/adr/0003-yes-file-format-spec.md` (layouts verified against upstream readers; local parser gaps recorded).
+  - [/] `YesFileConstants`: Header magic bytes `0x98 0x58` are present; section names still need to match upstream (`versionInfo`, `booksInfo`, `text`, `pericopes`, `xrefs`, `footnotes`).
   - [x] Implement `BigEndianBinaryReader` wrapping `Stream` with `BinaryPrimitives.Read*BigEndian`.
 - [/] **Section Readers (`Infrastructure/YesFile/SectionReaders/`)**
   - [x] `IYesSectionReader` contract (Open-Closed design).
