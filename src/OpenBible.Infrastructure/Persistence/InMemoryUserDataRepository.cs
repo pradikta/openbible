@@ -1,6 +1,7 @@
 using OpenBible.Domain.Entities;
 using OpenBible.Domain.Interfaces;
 using OpenBible.Domain.ValueObjects;
+using OpenBible.Infrastructure.Persistence.Serialization;
 
 namespace OpenBible.Infrastructure.Persistence;
 
@@ -67,5 +68,26 @@ public sealed class InMemoryUserDataRepository : IUserDataRepository
     {
         _highlights.RemoveAll(h => h.Id == id);
         return Task.CompletedTask;
+    }
+
+    internal StoredUserData Export() =>
+        new(
+            [.. _positions.Values.Select(StoredMapper.ToStored)],
+            [.. _bookmarks.Select(StoredMapper.ToStored)],
+            [.. _highlights.Select(StoredMapper.ToStored)]);
+
+    internal void Restore(StoredUserData data)
+    {
+        _positions.Clear();
+        _bookmarks.Clear();
+        _highlights.Clear();
+
+        foreach (var position in data.Positions)
+        {
+            _positions[position.VersionId] = StoredMapper.ToDomain(position);
+        }
+
+        _bookmarks.AddRange(data.Bookmarks.Select(StoredMapper.ToDomain));
+        _highlights.AddRange(data.Highlights.Select(StoredMapper.ToDomain));
     }
 }

@@ -41,7 +41,7 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
     - [x] Pin `Microsoft.AspNetCore.Components.WebAssembly`
     - [x] Pin `xunit`, `NSubstitute`, `FluentAssertions`
     - [x] Snappy: no package needed; managed `SnappyBlockDecoder` is implemented in Infrastructure.
-    - [x] Pin IndexedDB interop package (`DnetIndexedDb` is pinned; the repository currently uses the JS interop in `wwwroot/interop/indexeddb.js`).
+    - [x] Pin IndexedDB interop package (`DnetIndexedDb` is pinned; the store uses JS interop in `wwwroot/interop/openbible-store.js`).
 - [x] **Scaffold Source Projects (`src/`)**
   - [x] `src/OpenBible.Domain` (classlib, zero external dependencies)
   - [x] `src/OpenBible.Application` (classlib, references `Domain`)
@@ -186,11 +186,11 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
     - [x] Attaches `footnotes` and `xrefs` entries to the verses addressed by their ARIF keys.
     - [x] GZip random access via bounded spool (`PrepareStream`).
 - [ ] **Offline Storage Implementations**
-  - [ ] `IndexedDbBibleRepository` implementing `IBibleRepository`. A non-functional stub exists in `OpenBible.Wasm` (JS argument mismatch, no verse storage, chapter lookup throws) and is **not registered**; the in-memory repository is used. Needs a proper design (ask first: storage engine decision).
-  - [ ] `IndexedDbUserDataRepository` implementing `IUserDataRepository` for bookmarks, highlights, and history (still in-memory; data is lost on reload).
-  - [ ] `IndexedDbSearchIndex` implementing `ISearchIndex` with tokenized text search (`SimpleSearchIndex` is in-memory; verify how it behaves with persisted versions after reload).
+  - [x] Persist installed versions: `PersistentBibleRepository` snapshots each version as JSON through `IPersistentStore` (`IndexedDbPersistentStore` in the Wasm host via JS interop; degrades to memory). Restored at startup by `PersistenceInitializer`.
+  - [x] Persist user data: `PersistentUserDataRepository` snapshots reading position, bookmarks and highlights after each change.
+  - [x] Search index is rebuilt from persisted versions at startup (`SimpleSearchIndex` stays in-memory; no separate persisted index).
 - [/] **Dependency Injection Registration**
-  - [/] Create `DependencyInjection.cs` with `AddInfrastructure(this IServiceCollection)` registering parser and in-memory repositories/search index (no persistent browser storage yet).
+  - [x] Create `DependencyInjection.cs` with `AddInfrastructure(this IServiceCollection)`; the host overrides `IPersistentStore`.
 - [/] **Integration Tests (`OpenBible.Infrastructure.Tests`)**
   - [x] Create minimal fixture `.yes` test file in `tests/fixtures/sample.yes` (Genesis 1, 3 verses; used by `SampleYesFixtureTests` and for manual import testing).
   - [x] Test `YesFileParser` header validation and section parsing (synthetic YES2 fixtures cover index bounds, books, text, and pericopes).

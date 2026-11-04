@@ -1,19 +1,36 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenBible.Domain.Interfaces;
 using OpenBible.Infrastructure.Persistence;
+using OpenBible.Infrastructure.Persistence.Storage;
 using OpenBible.Infrastructure.YesFile;
 
 namespace OpenBible.Infrastructure;
 
 public static class DependencyInjection
 {
+    /// <summary>
+    /// Registers the parser, in-memory working stores and the persistence decorators.
+    /// Register an <see cref="IPersistentStore"/> after this call (for example IndexedDB in the
+    /// browser host) to replace the default in-memory store, then call
+    /// <see cref="PersistenceInitializer.RestoreAsync"/> at startup.
+    /// </summary>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
         services.AddSingleton<IYesFileReader, YesFileParser>();
-        services.AddSingleton<IBibleRepository, InMemoryBibleRepository>();
-        services.AddSingleton<IUserDataRepository, InMemoryUserDataRepository>();
+        services.TryAddSingleton<IPersistentStore, InMemoryPersistentStore>();
+
+        services.AddSingleton<InMemoryBibleRepository>();
+        services.AddSingleton<PersistentBibleRepository>();
+        services.AddSingleton<IBibleRepository>(sp => sp.GetRequiredService<PersistentBibleRepository>());
+
+        services.AddSingleton<InMemoryUserDataRepository>();
+        services.AddSingleton<PersistentUserDataRepository>();
+        services.AddSingleton<IUserDataRepository>(sp => sp.GetRequiredService<PersistentUserDataRepository>());
+
         services.AddSingleton<ISearchIndex, SimpleSearchIndex>();
         services.AddSingleton<SampleScriptureSeeder>();
+        services.AddSingleton<PersistenceInitializer>();
 
         return services;
     }
