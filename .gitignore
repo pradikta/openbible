@@ -1,0 +1,21 @@
+## .NET Core
+bin/
+obj/
+*.user
+*.userosscache
+*.sln.docstates
+
+## Visual Studio / VS Code / Rider
+.vs/
+.vscode/
+.idea/
+*.suo
+*.userprefs
+*.launchSettings.json
+
+## Blazor WASM
+_framework/
+
+## OS generated files
+.DS_Store
+Thumbs.db

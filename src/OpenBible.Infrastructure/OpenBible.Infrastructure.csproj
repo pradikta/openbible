@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\OpenBible.Domain\OpenBible.Domain.csproj" />
+    <ProjectReference Include="..\OpenBible.Application\OpenBible.Application.csproj" />
+  </ItemGroup>
+</Project>

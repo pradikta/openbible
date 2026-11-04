@@ -1,0 +1,67 @@
+<div class="chapter-view">
+    <div class="chapter-header">
+        <h2>@Chapter.BookName @Chapter.ChapterNumber</h2>
+    </div>
+
+    <div class="verses-container">
+        @foreach (var verse in Chapter.Verses)
+        {
+            var pericopes = Chapter.Pericopes.Where(p => p.BeforeVerse == verse.VerseNumber).ToList();
+            @foreach (var p in pericopes)
+            {
+                <div class="pericope-header">
+                    <h3>@p.Title</h3>
+                    @if (p.ParallelPassages.Count > 0)
+                    {
+                        <div class="pericope-parallels">
+                            (@string.Join(", ", p.ParallelPassages))
+                        </div>
+                    }
+                </div>
+            }
+
+            <VerseDisplay Verse="verse" OnVerseClick="OnVerseSelected" />
+        }
+    </div>
+</div>
+
+<style>
+    .chapter-view {
+        max-width: 680px;
+        margin: 0 auto;
+        padding: 1rem 0.75rem 4rem 0.75rem;
+    }
+    .chapter-header {
+        text-align: center;
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid #e5e7eb;
+        padding-bottom: 0.75rem;
+    }
+    .chapter-header h2 {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Georgia, serif;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #111827;
+        margin: 0;
+    }
+    .pericope-header {
+        margin: 1.5rem 0 0.5rem 0;
+        padding-left: 0.5rem;
+    }
+    .pericope-header h3 {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #1e3a8a;
+        margin: 0 0 0.15rem 0;
+    }
+    .pericope-parallels {
+        font-size: 0.8rem;
+        color: #6b7280;
+        font-style: italic;
+    }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public ChapterDto Chapter { get; set; } = default!;
+    [Parameter] public EventCallback<VerseDto> OnVerseSelected { get; set; }
+}
