@@ -33,4 +33,44 @@ Implement against the verified upstream layouts above and test with a minimal fi
 - Header, index, and payload parsing need to be corrected together; the existing `(ARI, string)` verse loop is not a verified YES2 layout.
 - Section-name constants must match the upstream spellings; current local names are incompatible without an explicit alias policy.
 - GZip input is non-seekable after decompression in the general case; seek-based section access needs a bounded spool or a different strategy that does not load an entire input file into memory.
+
+## Verified implementation details (2026-11-04)
+
+The following layouts are now implemented and covered by offline tests.
+
+### `snappy-blocks` section compression
+
+A section that declares `compression.name = "snappy-blocks"` stores its payload as a container:
+
+- `compression.version` is `1`.
+- `compression.info` is a Bintex Simple Map containing `block_size` (int) and `compressed_block_sizes` (int array, one entry per block).
+- Block `n` starts at `content_start + sum(compressed_block_sizes[0..n-1])` and is exactly `compressed_block_sizes[n]` bytes long.
+- Each block is one raw Snappy block: a base-128 little-endian preamble holding the uncompressed length, followed by literal/copy elements.
+- Random access uses the concatenation of the decompressed blocks as its coordinate space, which is the space addressed by `booksInfo` `chapter_offsets`.
+
+Because section attributes are read before the content, compression is transparent to every section reader.
+
+### `pericopes` section
+
+Header: one-byte data format version, 32-bit index size (informational), 32-bit entry count, then the packed index.
+
+- Version `2` index entries are `(int32 ari, int32 offset)`.
+- Version `3` index entries are `(uint16 ari_high, uint16 ari_low_or_delta, uint16 offset_delta)`. When bit `0x8000` of `ari_high` is clear the entry is absolute (`ari = (ari_high << 16) | ari_low`); otherwise `ari = previous_ari + (ari_high & 0x7fff)`. Offsets accumulate.
+- Blocks sit at `data_start + offset` and consist of a one-byte block version (currently `4`), a Bintex value string title, a one-byte parallel-passage count, and that many Bintex value strings.
+
+Implementation map:
+
+| Concern | Type |
+|---|---|
+| Raw Snappy block decoding | `YesFile/Compression/SnappyBlockDecoder` |
+| Seekable container view | `YesFile/Compression/SnappyBlockStream` |
+| Section attributes plus transparent decompression | `YesFile/Sections/SectionContentStream` |
+| Pericope index and block parsing | `YesFile/Sections/PericopeSectionReader` |
+
+### Known gaps
+
+- `footnotes` and `xrefs` use an ARIF index plus fake ARI markers embedded in the verse text; neither is parsed yet, so `Verse.Footnotes` stays empty after import.
+- `.yes.gz` input is decompressed with `GZipStream`, which is not seekable, so random section access still fails. Supporting it needs a bounded spool or a forward-only import strategy that does not buffer the whole file in memory.
+- `booksInfo` optional fields (`abbreviation`, full book titles) are not mapped; book names currently come from the internal `BookId` catalog.
+
 - Fixtures and offline tests are required before claiming support for real-world YES2 files.
