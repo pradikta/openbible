@@ -54,6 +54,24 @@ public sealed class PersistentUserDataRepository(InMemoryUserDataRepository inne
         await PersistAsync(ct).ConfigureAwait(false);
     }
 
+    public async Task ClearReadingPositionAsync(string versionId, CancellationToken ct = default)
+    {
+        await inner.ClearReadingPositionAsync(versionId, ct).ConfigureAwait(false);
+        await PersistAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task ClearBookmarksAsync(string versionId, CancellationToken ct = default)
+    {
+        await inner.ClearBookmarksAsync(versionId, ct).ConfigureAwait(false);
+        await PersistAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task ClearHighlightsAsync(string versionId, CancellationToken ct = default)
+    {
+        await inner.ClearHighlightsAsync(versionId, ct).ConfigureAwait(false);
+        await PersistAsync(ct).ConfigureAwait(false);
+    }
+
     /// <summary>Loads persisted user data into memory; a corrupt snapshot is ignored.</summary>
     public async Task RestoreAsync(CancellationToken ct = default)
     {

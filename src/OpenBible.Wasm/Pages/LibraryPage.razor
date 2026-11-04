@@ -1,6 +1,7 @@
 @page "/library"
 @inject IMediator Mediator
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 
 <PageTitle>Library</PageTitle>
 
@@ -74,6 +75,41 @@
 </section>
 
 <section class="panel">
+    <h2>Data management</h2>
+    <div class="row-actions" style="flex-direction: column; gap: 8px;">
+        @if (_confirmClearHistory)
+        {
+            <div style="padding: 12px; background: #fff3cd; border-radius: 4px;">
+                <p style="margin: 0 0 8px 0; font-size: 14px;">Clear all bookmarks and reading history? (Translations stay)</p>
+                <button type="button" class="danger-btn" @onclick="ClearReadingHistoryAsync">Confirm</button>
+                <button type="button" class="text-btn" @onclick="() => _confirmClearHistory = false">Cancel</button>
+            </div>
+        }
+        else
+        {
+            <button type="button" class="danger-btn" @onclick="() => _confirmClearHistory = true" style="justify-content: flex-start;">
+                🗑️ Clear reading history & bookmarks
+            </button>
+        }
+
+        @if (_confirmFactoryReset)
+        {
+            <div style="padding: 12px; background: #f8d7da; border-radius: 4px;">
+                <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: bold;">⚠️ This will delete ALL data including all translations. Continue?</p>
+                <button type="button" class="danger-btn" @onclick="FactoryResetAsync">Confirm reset everything</button>
+                <button type="button" class="text-btn" @onclick="() => _confirmFactoryReset = false">Cancel</button>
+            </div>
+        }
+        else
+        {
+            <button type="button" class="danger-btn" @onclick="() => _confirmFactoryReset = true" style="justify-content: flex-start;">
+                ⚠️ Factory reset (delete everything)
+            </button>
+        }
+    </div>
+</section>
+
+<section class="panel">
     <VersionCatalog OnInstalled="LoadAsync" />
 </section>
 
@@ -83,6 +119,8 @@
     private string? _activeVersionId;
     private string? _defaultVersionId;
     private string? _confirmDeleteId;
+    private bool _confirmClearHistory;
+    private bool _confirmFactoryReset;
     private string? _error;
     private bool _loading = true;
 
@@ -169,4 +207,62 @@
 
         await LoadAsync();
     }
+
+    private async Task ClearReadingHistoryAsync()
+    {
+        _loading = true;
+        _error = null;
+        _confirmClearHistory = false;
+
+        try
+        {
+            // Clear all bookmarks, highlights, and reading positions for all versions
+            foreach (var version in _versions)
+            {
+                await Mediator.Send(new ClearReadingPositionCommand(version.Id));
+                await Mediator.Send(new ClearBookmarksCommand(version.Id));
+                await Mediator.Send(new ClearHighlightsCommand(version.Id));
+            }
+
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to clear history: {ex.Message}";
+            _loading = false;
+        }
+    }
+
+    private async Task FactoryResetAsync()
+    {
+        _loading = true;
+        _error = null;
+        _confirmFactoryReset = false;
+
+        try
+        {
+            // Delete all versions (cascades to delete bookmarks and positions)
+            foreach (var version in _versions.ToList())
+            {
+                await Mediator.Send(new DeleteVersionCommand(version.Id));
+            }
+
+            // Clear all preferences
+            await JS.InvokeVoidAsync("openBibleDisplay.reset");
+            await JS.InvokeVoidAsync("openBibleTheme.set", "system");
+
+            _versions = [];
+            _bookmarks.Clear();
+            _activeVersionId = null;
+            _defaultVersionId = null;
+            _loading = false;
+            _error = "All data cleared. App reset to factory defaults.";
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to reset: {ex.Message}";
+            _loading = false;
+        }
+    }
 }
+

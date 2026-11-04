@@ -70,6 +70,24 @@ public sealed class InMemoryUserDataRepository : IUserDataRepository
         return Task.CompletedTask;
     }
 
+    public Task ClearReadingPositionAsync(string versionId, CancellationToken ct = default)
+    {
+        _positions.Remove(versionId);
+        return Task.CompletedTask;
+    }
+
+    public Task ClearBookmarksAsync(string versionId, CancellationToken ct = default)
+    {
+        _bookmarks.RemoveAll(b => string.Equals(b.VersionId, versionId, StringComparison.OrdinalIgnoreCase));
+        return Task.CompletedTask;
+    }
+
+    public Task ClearHighlightsAsync(string versionId, CancellationToken ct = default)
+    {
+        _highlights.RemoveAll(h => string.Equals(h.VersionId, versionId, StringComparison.OrdinalIgnoreCase));
+        return Task.CompletedTask;
+    }
+
     internal StoredUserData Export() =>
         new(
             [.. _positions.Values.Select(StoredMapper.ToStored)],
