@@ -53,9 +53,97 @@ jobs:
           name: test-results
           path: TestResults/*.trx
 
-  docker:
-    name: Docker image
+  compose:
+    name: Validate compose file
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate the compose stack
+        run: docker compose config --quiet
+
+  docker-amd64:
+    name: Smoke test amd64 image
     needs: build-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build the amd64 image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: openbible:amd64-ci
+          cache-from: type=gha,scope=amd64
+          cache-to: type=gha,mode=max,scope=amd64
+          provenance: false
+
+      - name: Start the container
+        run: docker run --detach --name openbible --publish 8080:8080 openbible:amd64-ci
+
+      - name: Smoke test
+        run: sh tools/smoke_test.sh http://localhost:8080
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: docker logs openbible || true
+
+      - name: Remove container
+        if: always()
+        run: docker rm --force openbible || true
+
+  # Portainer runs on ARM64, so the arm64 variant is built and started under
+  # QEMU on every run instead of only being discovered broken at deploy time.
+  docker-arm64:
+    name: Verify the ARM64 image
+    needs: build-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v4
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build the ARM64 image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/arm64
+          load: true
+          tags: openbible:arm64-ci
+          cache-from: type=gha,scope=arm64
+          cache-to: type=gha,mode=max,scope=arm64
+          provenance: false
+
+      - name: Start the ARM64 container
+        run: docker run --detach --name openbible-arm64 --platform linux/arm64 --publish 8080:8080 openbible:arm64-ci
+
+      - name: Smoke test the ARM64 container
+        run: sh tools/smoke_test.sh http://localhost:8080
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: docker logs openbible-arm64 || true
+
+      - name: Remove container
+        if: always()
+        run: docker rm --force openbible-arm64 || true
+
+  publish:
+    name: Publish image to GHCR
+    if: github.event_name != 'pull_request'
+    needs: [compose, docker-amd64, docker-arm64]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -63,13 +151,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-qemu-action@v4
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       - name: Log in to GHCR
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -77,7 +164,7 @@ jobs:
 
       - name: Image metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
@@ -86,14 +173,18 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha,format=short
 
-      # Pull requests only verify that the image builds; nothing is pushed.
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
+          # Portainer pulls the arm64 manifest; amd64 keeps the tag usable on regular Docker hosts.
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=gha,scope=amd64
+            type=gha,scope=arm64
+          cache-to: type=gha,mode=max,scope=release
+          # Attestation manifests are skipped so every registry client, Portainer included, can pull the tag.
+          provenance: false

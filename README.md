@@ -295,7 +295,7 @@ Service workers need HTTPS except on `localhost`, so put the container behind a 
 
 ### CI and images
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds and tests on every push and pull request. On `main` and `v*` tags it also builds a multi-arch (`amd64`, `arm64`) image and pushes it to `ghcr.io/pradikta/openbible` (`latest`, version tags, short SHA). Pull requests only check that the image builds. The first published package may need its visibility set to public in the repository's package settings.
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds and tests on every push and pull request, validates the compose file, and smoke tests the image with [`tools/smoke_test.sh`](tools/smoke_test.sh) on both `amd64` and `arm64` (the ARM64 image runs under QEMU, since the target Portainer host is ARM64). On `main` and `v*` tags, once those jobs pass, a multi-arch image is pushed to `ghcr.io/pradikta/openbible` (`latest`, version tags, short SHA) without attestation manifests so Portainer can pull it. Pull requests only verify; nothing is pushed. The first published package may need its visibility set to public in the repository's package settings.
 
 ### Styling (Tailwind CSS)
 
