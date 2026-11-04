@@ -19,3 +19,13 @@ _framework/
 ## OS generated files
 .DS_Store
 Thumbs.db
+
+## Build output logs
+build.log
+build_err.log
+build_out.log
+build_output.txt
+
+## Infrastructure generated code
+src/OpenBible.Infrastructure/IndexedDb/
+src/OpenBible.Wasm/wwwroot/interop/
