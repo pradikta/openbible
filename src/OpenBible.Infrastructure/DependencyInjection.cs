@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.AddSingleton<IVersionCatalog, BundledVersionCatalog>();
 
         services.AddSingleton<ISearchIndex, SimpleSearchIndex>();
+        services.AddSingleton<IBackupService, UserDataBackupService>();
         services.AddSingleton<SampleScriptureSeeder>();
         services.AddSingleton<PersistenceInitializer>();
 

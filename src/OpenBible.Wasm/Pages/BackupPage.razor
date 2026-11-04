@@ -1,0 +1,94 @@
+@page "/backup"
+@inject IMediator Mediator
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+
+<PageTitle>Backup &amp; restore</PageTitle>
+
+<section class="panel">
+    <h1>Backup &amp; restore</h1>
+    <p class="muted">
+        A backup contains reading positions, bookmarks, highlights, notes, labels, progress marks, plan progress and the default version.
+        Installed Bible texts are not included; install them again from Library.
+    </p>
+
+    <div class="row-actions">
+        <button type="button" class="primary-btn" disabled="@_busy" @onclick="ExportAsync">Download backup</button>
+    </div>
+
+    <h2>Restore</h2>
+    <p class="muted">Restoring replaces the current notes, bookmarks, highlights and progress on this device.</p>
+    <InputFile OnChange="OnFileSelectedAsync" accept=".json,application/json" class="file-field" disabled="@_busy" />
+
+    @if (_busy)
+    {
+        <LoadingSpinner />
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <ErrorDisplay Message="@_error" />
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_status))
+    {
+        <p role="status">@_status</p>
+    }
+</section>
+
+@code {
+    private const long MaxBytes = 32L * 1024L * 1024L;
+
+    private bool _busy;
+    private string? _error;
+    private string? _status;
+
+    private async Task ExportAsync()
+    {
+        Begin();
+        var result = await Mediator.Send(new ExportBackupQuery());
+        if (result.IsSuccess && result.Value is not null)
+        {
+            await JS.InvokeVoidAsync("openBibleFiles.downloadText", result.Value.FileName, result.Value.Content, "application/json");
+            _status = $"Backup saved as {result.Value.FileName}.";
+        }
+        else
+        {
+            _error = result.Error ?? "Backup failed.";
+        }
+
+        _busy = false;
+    }
+
+    private async Task OnFileSelectedAsync(InputFileChangeEventArgs args)
+    {
+        Begin();
+        try
+        {
+            using var reader = new StreamReader(args.File.OpenReadStream(MaxBytes));
+            var json = await reader.ReadToEndAsync();
+            var result = await Mediator.Send(new ImportBackupCommand(json));
+            if (result.IsSuccess)
+            {
+                _status = "Backup restored.";
+            }
+            else
+            {
+                _error = result.Error ?? "Restore failed.";
+            }
+        }
+        catch (IOException ex)
+        {
+            _error = $"Could not read the file: {ex.Message}";
+        }
+
+        _busy = false;
+    }
+
+    private void Begin()
+    {
+        _busy = true;
+        _error = null;
+        _status = null;
+    }
+}

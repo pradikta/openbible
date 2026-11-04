@@ -71,6 +71,15 @@ public sealed class PersistentStudyDataRepository(InMemoryStudyDataRepository in
         }
     }
 
+    internal StoredStudyData Export() => inner.Export();
+
+    /// <summary>Replaces all study data and persists the result.</summary>
+    internal Task ReplaceAsync(StoredStudyData data, CancellationToken ct)
+    {
+        inner.Restore(data);
+        return store.SetAsync(Key, JsonSerializer.Serialize(inner.Export(), PersistenceJsonContext.Default.StoredStudyData), ct);
+    }
+
     private async Task MutateAsync(Func<Task> change, CancellationToken ct)
     {
         await change().ConfigureAwait(false);

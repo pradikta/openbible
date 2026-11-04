@@ -1,6 +1,7 @@
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenBible.Application.Common.Behaviors;
 
 namespace OpenBible.Application;
@@ -19,6 +20,7 @@ public static class DependencyInjection
         });
 
         services.AddValidatorsFromAssembly(assembly);
+        services.TryAddSingleton(TimeProvider.System);
 
         return services;
     }

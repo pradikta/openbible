@@ -271,6 +271,7 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
 - [x] Notes, labels, progress marks, bundled sample reading plans and daily devotions, display settings, share, go-to-reference (stored under new key `openbible.study`; `/markers`, `/plans`, `/devotion`, `/compare`, `/settings`)
 - [ ] Downloadable reading plans and devotions (only bundled samples exist)
 - [x] Version management: Library lists versions, sets a default (key `openbible.settings`), links to Import, and shows the bundled official catalog (251 presets). "Install" downloads through the new `OpenBible.Server` ASP.NET Core host (`/api/catalog/download/{preset}`, bundled presets and official hosts only; it also serves the WASM files) and imports directly into the database; on static hosting, "Manual download" + Import is the fallback because catalog hosts send no CORS headers. The parser now reads real YES2 files (index size counts records only) and re-sniffs gzip on each read.
-- [ ] Backup/export and sync of user data
+- [x] Backup/export of user data: More > Backup & restore downloads one versioned JSON file (positions, bookmarks, highlights, notes, labels, marks, plan progress, default version) and restores it with rollback on invalid data (`IBackupService`, `UserDataBackupService`). Installed Bible texts and display settings are not included.
+- [ ] Sync of user data across devices
 - [ ] Songs
 

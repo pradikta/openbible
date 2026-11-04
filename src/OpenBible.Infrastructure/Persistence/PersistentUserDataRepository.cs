@@ -76,6 +76,15 @@ public sealed class PersistentUserDataRepository(InMemoryUserDataRepository inne
         }
     }
 
+    internal StoredUserData Export() => inner.Export();
+
+    /// <summary>Replaces all user data and persists the result.</summary>
+    internal async Task ReplaceAsync(StoredUserData data, CancellationToken ct)
+    {
+        inner.Restore(data);
+        await PersistAsync(ct).ConfigureAwait(false);
+    }
+
     private Task PersistAsync(CancellationToken ct) =>
         store.SetAsync(Key, JsonSerializer.Serialize(inner.Export(), PersistenceJsonContext.Default.StoredUserData), ct);
 }
