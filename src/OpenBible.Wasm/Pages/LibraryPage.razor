@@ -5,8 +5,9 @@
 <PageTitle>Library</PageTitle>
 
 <section class="panel">
-    <h1>Library</h1>
+    <h1>Bible versions</h1>
     <p class="muted">Installed translations stay on this device.</p>
+    <a class="primary-btn" href="import">Import file</a>
 
     @if (_loading)
     {
@@ -32,6 +33,10 @@
                 {
                     <span class="muted"> · Reading</span>
                 }
+                @if (version.Id == _defaultVersionId)
+                {
+                    <span class="default-badge">Default</span>
+                }
                 <p class="muted">@version.Language · @version.TotalBooks books</p>
                 @if (!string.IsNullOrWhiteSpace(version.Description))
                 {
@@ -39,6 +44,10 @@
                 }
                 <div class="row-actions">
                     <button type="button" class="primary-btn" @onclick="() => OpenVersion(version.Id)">Open</button>
+                    @if (version.Id != _defaultVersionId)
+                    {
+                        <button type="button" class="text-btn" @onclick="() => SetDefault(version.Id)">Set as default</button>
+                    }
                     @if (_confirmDeleteId == version.Id)
                     {
                         <button type="button" class="danger-btn" @onclick="() => Delete(version.Id)">Confirm delete</button>
@@ -64,10 +73,15 @@
     }
 </section>
 
+<section class="panel">
+    <VersionCatalog />
+</section>
+
 @code {
     private IReadOnlyList<BibleVersionDto> _versions = [];
     private Dictionary<string, IReadOnlyList<BookmarkDto>> _bookmarks = new(StringComparer.OrdinalIgnoreCase);
     private string? _activeVersionId;
+    private string? _defaultVersionId;
     private string? _confirmDeleteId;
     private string? _error;
     private bool _loading = true;
@@ -109,7 +123,21 @@
         }
 
         _activeVersionId = newest?.VersionId ?? _versions.FirstOrDefault()?.Id;
+        var preferred = await Mediator.Send(new GetDefaultVersionQuery());
+        _defaultVersionId = preferred.IsSuccess ? preferred.Value : null;
         _loading = false;
+    }
+
+    private async Task SetDefault(string versionId)
+    {
+        var result = await Mediator.Send(new SetDefaultVersionCommand(versionId));
+        if (!result.IsSuccess)
+        {
+            _error = result.Error;
+            return;
+        }
+
+        _defaultVersionId = versionId;
     }
 
     private async Task OpenVersion(string versionId)

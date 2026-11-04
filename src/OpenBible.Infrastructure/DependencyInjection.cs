@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenBible.Domain.Interfaces;
+using OpenBible.Infrastructure.Catalog;
 using OpenBible.Infrastructure.Persistence;
 using OpenBible.Infrastructure.Persistence.Storage;
 using OpenBible.Infrastructure.YesFile;
@@ -32,6 +33,10 @@ public static class DependencyInjection
         services.AddSingleton<PersistentStudyDataRepository>();
         services.AddSingleton<IStudyDataRepository>(sp => sp.GetRequiredService<PersistentStudyDataRepository>());
         services.AddSingleton<IReadingContentSource, BundledReadingContent>();
+
+        services.AddSingleton<PersistentAppSettingsRepository>();
+        services.AddSingleton<IAppSettingsRepository>(sp => sp.GetRequiredService<PersistentAppSettingsRepository>());
+        services.AddSingleton<IVersionCatalog, BundledVersionCatalog>();
 
         services.AddSingleton<ISearchIndex, SimpleSearchIndex>();
         services.AddSingleton<SampleScriptureSeeder>();

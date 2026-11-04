@@ -141,7 +141,10 @@ else
     private async Task RedirectHomeAsync()
     {
         var versions = await Mediator.Send(new GetInstalledVersionsQuery());
-        var versionId = versions.IsSuccess ? versions.Value?.FirstOrDefault()?.Id : null;
+        var preferred = await Mediator.Send(new GetDefaultVersionQuery());
+        var versionId = preferred.IsSuccess && preferred.Value is not null
+            ? preferred.Value
+            : versions.IsSuccess ? versions.Value?.FirstOrDefault()?.Id : null;
         if (versionId is null)
         {
             _emptyLibrary = true;

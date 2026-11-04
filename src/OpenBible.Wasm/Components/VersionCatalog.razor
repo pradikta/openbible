@@ -1,0 +1,57 @@
+@inject IMediator Mediator
+
+<h2>Download more versions</h2>
+<p class="muted">
+    The list comes from the official Alkitab catalog and is stored in the app. Download starts in your browser;
+    then add the file with <a href="import">Import</a>.
+</p>
+<input class="catalog-search" type="search" placeholder="Search name, language or description"
+       value="@_search" @oninput="OnSearch" aria-label="Search versions" />
+
+@if (_items.Count == 0)
+{
+    <p class="muted">No matching versions.</p>
+}
+else
+{
+    <p class="muted">@_items.Count versions</p>
+    @foreach (var item in _items.Take(_visible))
+    {
+        <article class="catalog-item">
+            <div>
+                <strong>@item.LongName</strong>
+                <span class="muted"> · @item.ShortName · @item.Locale</span>
+                <p class="muted">@item.Description</p>
+            </div>
+            <a class="primary-btn" href="@item.DownloadUrl" target="_blank" rel="noopener noreferrer">Download</a>
+        </article>
+    }
+
+    @if (_items.Count > _visible)
+    {
+        <button type="button" class="text-btn" @onclick="() => _visible += PageSize">Show more</button>
+    }
+}
+
+@code {
+    private const int PageSize = 20;
+
+    private IReadOnlyList<CatalogVersionDto> _items = [];
+    private string _search = string.Empty;
+    private int _visible = PageSize;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task OnSearch(ChangeEventArgs e)
+    {
+        _search = e.Value?.ToString() ?? string.Empty;
+        _visible = PageSize;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var result = await Mediator.Send(new GetVersionCatalogQuery(_search));
+        _items = result.IsSuccess ? result.Value! : [];
+    }
+}

@@ -7,6 +7,7 @@ public sealed class PersistenceInitializer(
     PersistentBibleRepository bibleRepository,
     PersistentUserDataRepository userDataRepository,
     PersistentStudyDataRepository studyDataRepository,
+    PersistentAppSettingsRepository appSettingsRepository,
     ISearchIndex searchIndex)
 {
     public async Task RestoreAsync(CancellationToken ct = default)
@@ -14,5 +15,6 @@ public sealed class PersistenceInitializer(
         await bibleRepository.RestoreAsync(searchIndex, ct).ConfigureAwait(false);
         await userDataRepository.RestoreAsync(ct).ConfigureAwait(false);
         await studyDataRepository.RestoreAsync(ct).ConfigureAwait(false);
+        await appSettingsRepository.RestoreAsync(ct).ConfigureAwait(false);
     }
 }

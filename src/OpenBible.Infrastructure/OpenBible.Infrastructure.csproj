@@ -4,6 +4,9 @@
     <ProjectReference Include="..\OpenBible.Application\OpenBible.Application.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Catalog\version_config.json" LogicalName="version_config.json" />
+  </ItemGroup>
+  <ItemGroup>
     <InternalsVisibleTo Include="OpenBible.Infrastructure.Tests" />
   </ItemGroup>
 </Project>
