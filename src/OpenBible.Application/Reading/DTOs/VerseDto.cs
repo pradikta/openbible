@@ -8,5 +8,6 @@ public sealed record VerseDto(
     int Ari,
     bool IsBookmarked = false,
     HighlightColor? Highlight = null,
-    IReadOnlyList<string>? Footnotes = null
+    IReadOnlyList<string>? Footnotes = null,
+    IReadOnlyList<string>? XRefs = null
 );

@@ -58,7 +58,35 @@ Header: one-byte data format version, 32-bit index size (informational), 32-bit 
 - Version `3` index entries are `(uint16 ari_high, uint16 ari_low_or_delta, uint16 offset_delta)`. When bit `0x8000` of `ari_high` is clear the entry is absolute (`ari = (ari_high << 16) | ari_low`); otherwise `ari = previous_ari + (ari_high & 0x7fff)`. Offsets accumulate.
 - Blocks sit at `data_start + offset` and consist of a one-byte block version (currently `4`), a Bintex value string title, a one-byte parallel-passage count, and that many Bintex value strings.
 
-Implementation map:
+### `footnotes` and `xrefs` sections
+
+Both sections share one index layout, differing only in the payload meaning:
+
+- One-byte data format version (`1`).
+- 32-bit entry count.
+- `int32 arifs[entry_count]` — `arif = (ari << 8) | index`, where `index` is the one-based entry index inside a verse and the remaining 24 bits are the verse ARI. Upstream writes them in unsigned ascending order.
+- `int32 offsets[entry_count]` — byte offsets relative to the first payload byte (immediately after the offset table).
+- Payload: one Bintex value string per entry, read at `data_start + offsets[n]`.
+
+The verse text refers to an entry with an inline element such as `@<f1@>@/` (footnote 1) or `@<x2@>@/` (cross-reference 2); the entry itself is looked up with `arif = (ari << 8) | n`.
+
+### Verse text markers
+
+Verse text may start with `@@` and then contain inline markers. The parser stores text verbatim; `Application/Reading/Formatting/VerseMarkupFormatter` turns it into display text, following upstream `FormattedVerseText` and `VerseRenderer`:
+
+| Marker | Meaning | Display |
+|---|---|---|
+| `@0`–`@4`, `@^`, `@8` | Paragraph, new paragraph, forced line break | One space where the last output is not whitespace |
+| `@6` / `@5` | Start / end of red-letter text | Removed |
+| `@9` / `@7` | Start / end of italic text | Removed |
+| `@<fN@>` … `@/` | Footnote marker `N` | Superscript digits of `N` |
+| `@<xN@>` … `@/` | Cross-reference marker `N` | `※` (U+203B) |
+| `@<tag…@>` … `@/` | Any other inline element, for example `@<to:Gen.3.3@>` | Head removed, inner text kept |
+| `@@` | Verse formatting prefix | Removed |
+
+`ToPlainText` drops the footnote and cross-reference marks as well, which is the form search and copying need.
+
+### Implementation map
 
 | Concern | Type |
 |---|---|
@@ -66,10 +94,15 @@ Implementation map:
 | Seekable container view | `YesFile/Compression/SnappyBlockStream` |
 | Section attributes plus transparent decompression | `YesFile/Sections/SectionContentStream` |
 | Pericope index and block parsing | `YesFile/Sections/PericopeSectionReader` |
+| ARI and ARIF unpacking | `YesFile/Yes2Ari` |
+| ARIF index plus payload strings | `YesFile/Sections/ArifEntrySectionReader` |
+| Footnote entries | `YesFile/Sections/FootnoteSectionReader` |
+| Cross-reference entries | `YesFile/Sections/XRefSectionReader` |
+| Verse text marker rendering | `Application/Reading/Formatting/VerseMarkupFormatter` |
 
 ### Known gaps
 
-- `footnotes` and `xrefs` use an ARIF index plus fake ARI markers embedded in the verse text; neither is parsed yet, so `Verse.Footnotes` stays empty after import.
+- Inline links inside footnote and cross-reference content (for example `@<to:Gen.3.3@>` ... `@/`) are flattened to their inner text: they are not navigable yet, and there is no tap-to-open note dialog.
 - `.yes.gz` input is decompressed with `GZipStream`, which is not seekable, so random section access still fails. Supporting it needs a bounded spool or a forward-only import strategy that does not buffer the whole file in memory.
 - `booksInfo` optional fields (`abbreviation`, full book titles) are not mapped; book names currently come from the internal `BookId` catalog.
 

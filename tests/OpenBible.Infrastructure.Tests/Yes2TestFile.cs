@@ -1,5 +1,7 @@
 using System.Buffers.Binary;
 using System.Text;
+using OpenBible.Domain.Enums;
+using OpenBible.Domain.ValueObjects;
 using OpenBible.Infrastructure.YesFile;
 
 namespace OpenBible.Infrastructure.Tests;
@@ -53,7 +55,7 @@ internal static class Yes2TestFile
     public static byte[] MetadataMap(string shortName = "TST", string longName = "Test Version") =>
         Map(("shortName", EncodeString(shortName)), ("longName", EncodeString(longName)), ("locale", EncodeString("en")));
 
-    public static byte[] GenesisChapterOneBooksInfo() =>
+    public static byte[] GenesisChapterOneBooksInfo(int verseCount = 1) =>
     [
         .. Int32ToBytes(1),
         .. Map(
@@ -61,9 +63,89 @@ internal static class Yes2TestFile
             ("shortName", EncodeString("Gen")),
             ("offset", EncodeInt(0)),
             ("chapter_count", EncodeInt(1)),
-            ("verse_counts", EncodeIntArray([1])),
+            ("verse_counts", EncodeIntArray([verseCount])),
             ("chapter_offsets", EncodeIntArray([0])))
     ];
+
+    /// <summary>
+    /// Builds a <c>text</c> section holding one UTF-8 verse record per entry.
+    /// </summary>
+    public static byte[] VerseTextSection(params string[] verses)
+    {
+        using var stream = new MemoryStream();
+        foreach (var verse in verses)
+        {
+            var bytes = Encoding.UTF8.GetBytes(verse);
+            WriteVarUInt(stream, bytes.Length);
+            stream.Write(bytes);
+        }
+
+        return stream.ToArray();
+    }
+
+    /// <summary>
+    /// Builds an ARIF-indexed section (<c>footnotes</c> or <c>xrefs</c>): version byte,
+    /// entry count, ARIF keys, relative offsets, then one Bintex value string per entry.
+    /// </summary>
+    public static byte[] ArifSection(params (int Arif, string Content)[] entries)
+    {
+        using var content = new MemoryStream();
+        var offsets = new int[entries.Length];
+        for (var index = 0; index < entries.Length; index++)
+        {
+            offsets[index] = checked((int)content.Length);
+            content.Write(EncodeString(entries[index].Content));
+        }
+
+        using var section = new MemoryStream();
+        section.WriteByte(1); // data format version
+        WriteInt32(section, entries.Length);
+        foreach (var entry in entries)
+        {
+            WriteInt32(section, entry.Arif);
+        }
+
+        foreach (var offset in offsets)
+        {
+            WriteInt32(section, offset);
+        }
+
+        content.Position = 0;
+        content.CopyTo(section);
+        return section.ToArray();
+    }
+
+    /// <summary>
+    /// Packs a verse reference and a one-based entry index into the ARIF stored in YES2 files.
+    /// </summary>
+    public static int Arif(BookId book, int chapter, int verse, int index) =>
+        (new VerseReference(book, chapter, verse).ToAri() << 8) | index;
+
+    public static void WriteVarUInt(Stream stream, int value)
+    {
+        if (value < 0x80)
+        {
+            stream.WriteByte(checked((byte)value));
+        }
+        else if (value < 0x4000)
+        {
+            stream.WriteByte(checked((byte)(0x80 | (value >> 8))));
+            stream.WriteByte(checked((byte)value));
+        }
+        else if (value < 0x200000)
+        {
+            stream.WriteByte(checked((byte)(0xc0 | (value >> 16))));
+            stream.WriteByte(checked((byte)(value >> 8)));
+            stream.WriteByte(checked((byte)value));
+        }
+        else
+        {
+            stream.WriteByte(checked((byte)(0xe0 | (value >> 24))));
+            stream.WriteByte(checked((byte)(value >> 16)));
+            stream.WriteByte(checked((byte)(value >> 8)));
+            stream.WriteByte(checked((byte)value));
+        }
+    }
 
     /// <summary>
     /// Builds the <c>text</c> section attributes declaring a <c>snappy-blocks</c> container.

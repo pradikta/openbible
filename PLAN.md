@@ -5,10 +5,10 @@
 > Every milestone must pass `dotnet build` and `dotnet test` with zero warnings and zero errors before proceeding.
 >
 > **Progress snapshot (2026-11-04):** Phases 0–2 are substantially implemented; Phase 3 is in progress
-> (the core parser exists, but section readers are placeholders and persistent browser storage/Snappy
-> decompression are not implemented); Phase 4 has its main pages and components, while Phase 5 remains
-> partial. Latest verification: `dotnet build --no-incremental` succeeded with 0 warnings/errors and
-> `dotnet test --no-build --verbosity normal` passed all 44 tests. Browser/device offline behavior has
+> (the YES2 parser reads metadata, books, text, `snappy-blocks`, pericopes, footnotes, and xrefs, while
+> persistent browser storage is still missing); Phase 4 has its main pages and components, while Phase 5
+> remains partial. Latest verification: `dotnet build --no-incremental` succeeded with 0 warnings/errors
+> and `dotnet test --no-build --verbosity normal` passed all 85 tests. Browser/device offline behavior has
 > not been verified end-to-end.
 
 ---
@@ -79,12 +79,13 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
   - [x] Implement `YesFileDescriptor`:
     - [x] File metadata, format version (`YES1` vs `YES2`), byte length, is compressed (`.gz`).
 - [x] **Domain Entities**
-  - [x] `Verse`: `VerseReference Reference`, `string Text`, `IReadOnlyList<FootnoteEntry> Footnotes`.
+  - [x] `Verse`: `VerseReference Reference`, `string Text`, `IReadOnlyList<FootnoteEntry> Footnotes`, `IReadOnlyList<XRefEntry> XRefs`.
   - [x] `Chapter`: `BookId Book`, `int ChapterNumber`, `IReadOnlyList<Verse> Verses`.
   - [x] `Book`: `BookId BookId`, `string ShortName`, `string FullName`, `int ChapterCount`, `IReadOnlyList<int> VerseCounts`.
   - [x] `BibleVersion`: `string Id`, `string Title`, `string Language`, `string Description`, `IReadOnlyList<Book> Books`.
   - [x] `Pericope`: Section heading with `VerseReference Reference`, `string Title`, `IReadOnlyList<string> ParallelPassages`.
   - [x] `FootnoteEntry`: `VerseReference Reference`, `int Index`, `string Content`.
+  - [x] `XRefEntry`: `VerseReference Reference`, `int Index`, `string Content`.
   - [x] `Bookmark`: `Guid Id`, `string VersionId`, `VerseReference Reference`, `DateTimeOffset CreatedAt`, `string? Note`.
   - [x] `Highlight`: `Guid Id`, `string VersionId`, `VerseReference Reference`, `HighlightColor Color`, `DateTimeOffset UpdatedAt`.
   - [x] `ReadingPosition`: `string VersionId`, `VerseReference Reference`, `DateTimeOffset LastReadAt`.
@@ -127,7 +128,7 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
     - [x] `ValidationBehavior<TRequest, TResponse>` (validates via FluentValidation, returns `Result.Failure`).
 - [x] **Data Transfer Objects (DTOs)**
   - [x] `ChapterDto(BookId BookId, string BookName, int ChapterNumber, IReadOnlyList<VerseDto> Verses, IReadOnlyList<PericopeDto> Pericopes)`
-  - [x] `VerseDto(int VerseNumber, string Text, int Ari, bool IsBookmarked, HighlightColor? Highlight)`
+  - [x] `VerseDto(int VerseNumber, string Text, int Ari, bool IsBookmarked, HighlightColor? Highlight, IReadOnlyList<string>? Footnotes, IReadOnlyList<string>? XRefs)`
   - [x] `PericopeDto(int BeforeVerse, string Title, IReadOnlyList<string> Parallels)`
   - [x] `BibleVersionDto(string Id, string Title, string Language, string Description, int TotalBooks)`
   - [x] `SearchResultDto(VerseReference Reference, string VersionId, string BookName, int Chapter, int Verse, string Snippet, double Score)`
@@ -171,7 +172,7 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
   - [ ] `BookNamesSectionReader`: parses full and short book titles (`abbreviation`/full titles are not mapped yet).
   - [x] Verse text reader uses book/chapter offsets and VarUInt lengths for both uncompressed and `snappy-blocks` compressed sections.
   - [x] `PericopeSectionReader`: parses data format versions 2 and 3 indexes plus version 4 blocks into `Pericope` entities (title, parallel passages, untitled headings skipped).
-  - [ ] `FootnoteSectionReader` / `XRefSectionReader`: ARIF index plus fake ARI text markers are not implemented, so `Verse.Footnotes` stays empty.
+  - [x] `ArifEntrySectionReader` plus `FootnoteSectionReader` / `XRefSectionReader`: parse the ARIF index (version 1, sorted keys, relative offsets) into `FootnoteEntry` and `XRefEntry` entities attached to their verses. Inline `@<fN@>` / `@<xN@>` markers are rendered by `Application/Reading/Formatting/VerseMarkupFormatter`.
 - [/] **Decompression Engine**
   - [/] Transparent `.yes.gz` GZip stream wrapper (`System.IO.Compression.GZipStream` exists; seek-dependent parsing still needs support).
   - [x] Managed WASM-compatible Snappy block decoder (`YesFile/Compression/SnappyBlockDecoder`, no native dependency).
@@ -182,7 +183,8 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
     - [x] Reads metadata, book/chapter indexes, and verse content without loading the whole file into memory.
     - [x] Asynchronously yields verses from uncompressed and `snappy-blocks` compressed text sections.
     - [x] Asynchronously yields pericope headings from the `pericopes` section.
-    - [ ] GZip random access and footnote/xref sections remain unimplemented.
+    - [x] Attaches `footnotes` and `xrefs` entries to the verses addressed by their ARIF keys.
+    - [ ] GZip random access remains unimplemented.
 - [ ] **Offline Storage Implementations**
   - [ ] `IndexedDbBibleRepository` implementing `IBibleRepository` using client-side IndexedDB interop.
   - [ ] `IndexedDbUserDataRepository` implementing `IUserDataRepository` for bookmarks, highlights, and history.
@@ -195,6 +197,7 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
   - [x] Test Snappy decompression accuracy against known sample blocks (literal, copy-1, copy-2, truncated and out-of-range blocks).
   - [x] Test `snappy-blocks` verse text: single block, payload split across blocks, unsupported compression, and corrupt blocks.
   - [x] Test pericope parsing end to end, including a compressed `pericopes` section and persistence through `InMemoryBibleRepository`.
+  - [x] Test footnote and xref parsing: ARIF mapping, compressed section, missing sections, zero index, out-of-range offset, unsupported version, and persistence.
   - [x] Test Big-Endian integer reading logic.
 
 
@@ -216,7 +219,7 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
     - [x] Renders current chapter with book title and chapter number.
     - [x] Displays verses with verse numbers, selectable for highlights/bookmarks.
     - [x] Displays inline pericope section headings.
-    - [ ] Displays footnotes accessible via tap (UI supports footnotes, but the YES parser does not populate them yet).
+    - [/] Footnote and cross-reference marks render inline (superscript index for notes, `※` for cross-references) with the note text in a tooltip; a tap-to-open note dialog remains.
     - [x] Swipe left/right touch gesture support for previous/next chapter navigation.
     - [x] Quick navigation header (tap book/chapter to open picker).
   - [x] **`LibraryPage.razor` (Version Management)**:

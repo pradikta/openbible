@@ -1,7 +1,5 @@
 using OpenBible.Domain.Entities;
-using OpenBible.Domain.Enums;
 using OpenBible.Domain.Exceptions;
-using OpenBible.Domain.ValueObjects;
 
 namespace OpenBible.Infrastructure.YesFile.Sections;
 
@@ -13,7 +11,6 @@ internal static class PericopeSectionReader
 {
     private const int MaximumEntryCount = 200_000;
     private const int SupportedBlockVersion = 4;
-    private const int BookCount = 66;
 
     public static IReadOnlyList<Pericope> Read(SectionContentStream content)
     {
@@ -51,7 +48,7 @@ internal static class PericopeSectionReader
             var block = ReadBlock(reader);
             if (block is not null)
             {
-                pericopes.Add(new Pericope(CreateReference(aris[index]), block.Title, block.ParallelPassages));
+                pericopes.Add(new Pericope(Yes2Ari.ToReference(aris[index]), block.Title, block.ParallelPassages));
             }
         }
 
@@ -111,19 +108,6 @@ internal static class PericopeSectionReader
 
         // Headings without a title carry no information for the reader UI.
         return string.IsNullOrWhiteSpace(title) ? null : new PericopeBlock(title, parallels);
-    }
-
-    private static VerseReference CreateReference(int ari)
-    {
-        var bookId = (ari >> 16) & 0xff;
-        var chapter = (ari >> 8) & 0xff;
-        var verse = ari & 0xff;
-        if (bookId >= BookCount || chapter < 1)
-        {
-            throw new YesFileCorruptException($"Invalid YES2 pericope ARI: 0x{ari:X8}.");
-        }
-
-        return new VerseReference((BookId)bookId, chapter, verse);
     }
 
     private sealed record PericopeBlock(string Title, IReadOnlyList<string> ParallelPassages);

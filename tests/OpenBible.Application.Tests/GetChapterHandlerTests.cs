@@ -48,6 +48,36 @@ public sealed class GetChapterHandlerTests
     }
 
     [Fact]
+    public async Task Handle_VerseWithNotes_FormatsMarkupAndMapsNotes()
+    {
+        var reference = new VerseReference(BookId.Genesis, 1, 1);
+        var verses = new List<Verse>
+        {
+            new(
+                reference,
+                "@@Open the first footnote @<f1@>@/.",
+                [new FootnoteEntry(reference, 1, "The first note.")],
+                [new XRefEntry(reference, 1, "@<to:John.1.1@>John 1:1@/")])
+        };
+
+        _bibleRepository
+            .GetChapterVersesAsync("kjv", BookId.Genesis, 1, Arg.Any<CancellationToken>())
+            .Returns(verses);
+
+        _bibleRepository
+            .GetChapterPericopesAsync("kjv", BookId.Genesis, 1, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<Pericope>());
+
+        var result = await _handler.Handle(new GetChapterQuery("kjv", BookId.Genesis, 1), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var verse = Assert.Single(result.Value!.Verses);
+        Assert.Equal("Open the first footnote \u00b9.", verse.Text);
+        Assert.Equal("The first note.", Assert.Single(verse.Footnotes!));
+        Assert.Equal("John 1:1", Assert.Single(verse.XRefs!));
+    }
+
+    [Fact]
     public async Task Handle_NonExistentChapter_ShouldReturnFailure()
     {
         _bibleRepository

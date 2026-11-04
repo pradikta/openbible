@@ -11,6 +11,12 @@ namespace OpenBible.Infrastructure.YesFile;
 
 public sealed class YesFileParser : IYesFileReader
 {
+    private static readonly IReadOnlyDictionary<int, IReadOnlyList<FootnoteEntry>> EmptyFootnotes =
+        new Dictionary<int, IReadOnlyList<FootnoteEntry>>();
+
+    private static readonly IReadOnlyDictionary<int, IReadOnlyList<XRefEntry>> EmptyXRefs =
+        new Dictionary<int, IReadOnlyList<XRefEntry>>();
+
     public async Task<BibleVersion> ReadMetadataAsync(Stream stream, CancellationToken ct = default)
     {
         var decompressed = PrepareStream(stream);
@@ -53,6 +59,8 @@ public sealed class YesFileParser : IYesFileReader
         var metadata = BintexValueMapReader.Read(decompressed, metadataSection.ContentSize);
         var textEncoding = BintexValueAccess.GetInt(metadata, "textEncoding", 2);
         var books = ReadBooks(decompressed, index);
+        var footnotes = ReadFootnotes(decompressed, index);
+        var xrefs = ReadXRefs(decompressed, index);
         var textSection = GetRequiredSection(index, YesFileConstants.Sections.VerseText);
         using var textContent = SectionContentStream.Open(decompressed, textSection);
         foreach (var book in books)
@@ -84,7 +92,11 @@ public sealed class YesFileParser : IYesFileReader
                         _ => throw new YesFileCorruptException($"Unsupported YES2 text encoding: {textEncoding}.")
                     };
 
-                    yield return new Verse(new VerseReference(book.BookId, chapter, verse), text);
+                    var reference = new VerseReference(book.BookId, chapter, verse);
+                    var ari = reference.ToAri();
+                    footnotes.TryGetValue(ari, out var verseFootnotes);
+                    xrefs.TryGetValue(ari, out var verseXRefs);
+                    yield return new Verse(reference, text, verseFootnotes, verseXRefs);
                 }
             }
         }
@@ -109,6 +121,28 @@ public sealed class YesFileParser : IYesFileReader
             ct.ThrowIfCancellationRequested();
             yield return pericope;
         }
+    }
+
+    private static IReadOnlyDictionary<int, IReadOnlyList<FootnoteEntry>> ReadFootnotes(Stream stream, Yes2SectionIndex index)
+    {
+        if (!index.TryGetSection(YesFileConstants.Sections.Footnotes, out var section) || section is null)
+        {
+            return EmptyFootnotes;
+        }
+
+        using var content = SectionContentStream.Open(stream, section);
+        return FootnoteSectionReader.Read(content);
+    }
+
+    private static IReadOnlyDictionary<int, IReadOnlyList<XRefEntry>> ReadXRefs(Stream stream, Yes2SectionIndex index)
+    {
+        if (!index.TryGetSection(YesFileConstants.Sections.CrossReferences, out var section) || section is null)
+        {
+            return EmptyXRefs;
+        }
+
+        using var content = SectionContentStream.Open(stream, section);
+        return XRefSectionReader.Read(content);
     }
 
     private static Stream PrepareStream(Stream stream)

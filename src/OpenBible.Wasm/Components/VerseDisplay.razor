@@ -3,7 +3,7 @@
     <span class="verse-text">@Verse.Text</span>
     @if (Verse.Footnotes is { Count: > 0 })
     {
-        <sup class="verse-fn" title="Footnote">*</sup>
+        <sup class="verse-fn" title="@string.Join(" ", Verse.Footnotes)">*</sup>
     }
 </div>
 

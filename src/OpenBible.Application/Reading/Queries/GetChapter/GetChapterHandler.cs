@@ -1,6 +1,7 @@
 using MediatR;
 using OpenBible.Application.Common.Models;
 using OpenBible.Application.Reading.DTOs;
+using OpenBible.Application.Reading.Formatting;
 using OpenBible.Domain.Catalog;
 using OpenBible.Domain.Interfaces;
 using OpenBible.Domain.ValueObjects;
@@ -52,11 +53,18 @@ public sealed class GetChapterHandler : IRequestHandler<GetChapterQuery, Result<
 
         var verseDtos = verses.Select(v => new VerseDto(
             v.Reference.Verse,
-            v.Text,
+            VerseMarkupFormatter.ToDisplayText(v.Text),
             v.Reference.ToAri(),
             IsBookmarked: bookmarkedVerses.Contains(v.Reference.Verse),
             Highlight: highlightMap.TryGetValue(v.Reference.Verse, out var color) ? color : null,
-            Footnotes: v.Footnotes.Select(f => f.Content).ToList()
+            Footnotes: v.Footnotes
+                .OrderBy(footnote => footnote.Index)
+                .Select(footnote => VerseMarkupFormatter.ToDisplayText(footnote.Content))
+                .ToList(),
+            XRefs: v.XRefs
+                .OrderBy(xref => xref.Index)
+                .Select(xref => VerseMarkupFormatter.ToDisplayText(xref.Content))
+                .ToList()
         )).ToList();
 
         var pericopeDtos = pericopes.Select(p => new PericopeDto(
