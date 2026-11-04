@@ -1,0 +1,115 @@
+@page "/settings"
+@using System.Text.Json
+@inject IJSRuntime JS
+
+<PageTitle>Settings</PageTitle>
+
+<section class="panel">
+    <h1>Settings</h1>
+    <p class="muted">Display options are stored on this device.</p>
+
+    <div class="setting-row">
+        <label for="font-size">Text size (@_size.ToString("0.00")rem)</label>
+        <input id="font-size" type="range" min="0.8" max="2" step="0.05" value="@_size"
+               @oninput="e => OnSize(e.Value)" />
+    </div>
+    <div class="setting-row">
+        <label for="line-height">Line spacing (@_line.ToString("0.0"))</label>
+        <input id="line-height" type="range" min="1.2" max="2.4" step="0.1" value="@_line"
+               @oninput="e => OnLine(e.Value)" />
+    </div>
+    <div class="setting-row">
+        <label for="font-family">Font</label>
+        <select id="font-family" value="@_font" @onchange="e => OnFont(e.Value)">
+            <option value="serif">Serif</option>
+            <option value="sans">Sans-serif</option>
+        </select>
+    </div>
+    <div class="setting-row">
+        <label><input type="checkbox" checked="@_numbers" @onchange="e => OnNumbers(e.Value)" /> Show verse numbers</label>
+    </div>
+
+    <p class="verse-preview" style="font-size: @(_size.ToString(System.Globalization.CultureInfo.InvariantCulture))rem; line-height: @(_line.ToString(System.Globalization.CultureInfo.InvariantCulture)); font-family: @(_font == "sans" ? "system-ui, sans-serif" : "Georgia, serif")">
+        @if (_numbers)
+        {
+            <sup>1</sup>
+        }
+        In the beginning God created the heaven and the earth.
+    </p>
+
+    <button type="button" class="text-btn" @onclick="ResetAsync">Reset to defaults</button>
+</section>
+
+@code {
+    private double _size = 1.05;
+    private double _line = 1.7;
+    private string _font = "serif";
+    private bool _numbers = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        var json = await JS.InvokeAsync<string>("openBibleDisplay.get");
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        _size = root.GetProperty("size").GetDouble();
+        _line = root.GetProperty("line").GetDouble();
+        _font = root.GetProperty("font").GetString() ?? "serif";
+        _numbers = root.GetProperty("numbers").GetBoolean();
+        StateHasChanged();
+    }
+
+    private Task OnSize(object? value)
+    {
+        _size = Parse(value, _size);
+        return SaveAsync();
+    }
+
+    private Task OnLine(object? value)
+    {
+        _line = Parse(value, _line);
+        return SaveAsync();
+    }
+
+    private Task OnFont(object? value)
+    {
+        _font = value?.ToString() ?? "serif";
+        return SaveAsync();
+    }
+
+    private Task OnNumbers(object? value)
+    {
+        _numbers = value is true;
+        return SaveAsync();
+    }
+
+    private static double Parse(object? value, double fallback) =>
+        double.TryParse(value?.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var d)
+            ? d
+            : fallback;
+
+    private async Task SaveAsync()
+    {
+        var json = JsonSerializer.Serialize(new Dictionary<string, object>
+        {
+            ["size"] = _size,
+            ["line"] = _line,
+            ["font"] = _font,
+            ["numbers"] = _numbers
+        });
+        await JS.InvokeVoidAsync("openBibleDisplay.set", json);
+    }
+
+    private async Task ResetAsync()
+    {
+        await JS.InvokeVoidAsync("openBibleDisplay.reset");
+        _size = 1.05;
+        _line = 1.7;
+        _font = "serif";
+        _numbers = true;
+    }
+}

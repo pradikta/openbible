@@ -61,6 +61,54 @@
                 document.documentElement.dataset.theme = value;
             }
         };
+        window.openBibleDisplay = (function () {
+            var defaults = { size: 1.05, line: 1.7, font: "serif", numbers: true };
+            var fonts = {
+                serif: "Georgia, 'Times New Roman', serif",
+                sans: "system-ui, -apple-system, 'Segoe UI', sans-serif"
+            };
+            function load() {
+                try {
+                    return Object.assign({}, defaults, JSON.parse(localStorage.getItem("ob-display") || "{}"));
+                } catch (e) {
+                    return Object.assign({}, defaults);
+                }
+            }
+            function apply(s) {
+                var root = document.documentElement.style;
+                root.setProperty("--ob-verse-size", s.size + "rem");
+                root.setProperty("--ob-verse-line", String(s.line));
+                root.setProperty("--ob-verse-font", fonts[s.font] || fonts.serif);
+                root.setProperty("--ob-verse-num-display", s.numbers ? "inline" : "none");
+            }
+            apply(load());
+            return {
+                get: function () { return JSON.stringify(load()); },
+                set: function (json) {
+                    var s = Object.assign({}, defaults, JSON.parse(json));
+                    localStorage.setItem("ob-display", JSON.stringify(s));
+                    apply(s);
+                },
+                reset: function () {
+                    localStorage.removeItem("ob-display");
+                    apply(defaults);
+                }
+            };
+        })();
+        window.openBibleShare = async function (text) {
+            if (navigator.share) {
+                try {
+                    await navigator.share({ text: text });
+                    return true;
+                } catch (e) {
+                    if (e && e.name === "AbortError") {
+                        return true;
+                    }
+                }
+            }
+            await navigator.clipboard.writeText(text);
+            return false;
+        };
         window.openBibleCopy = function (text) {
             return navigator.clipboard.writeText(text);
         };

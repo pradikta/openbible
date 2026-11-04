@@ -9,6 +9,14 @@
 
         @if (!_pickingChapter)
         {
+            <form class="goto-row" @onsubmit="GoToAsync">
+                <input type="text" @bind="_goto" placeholder="Go to, e.g. John 3:16" aria-label="Go to reference" />
+                <button type="submit" class="text-btn">Go</button>
+            </form>
+            @if (_gotoError is not null)
+            {
+                <p class="muted">@_gotoError</p>
+            }
             <div class="tabs">
                 <button type="button" class="@(_testament == Testament.OldTestament ? "on" : null)" @onclick="() => _testament = Testament.OldTestament">Old Testament</button>
                 <button type="button" class="@(_testament == Testament.NewTestament ? "on" : null)" @onclick="() => _testament = Testament.NewTestament">New Testament</button>
@@ -39,8 +47,10 @@
     [Parameter] public BookId CurrentBook { get; set; }
     [Parameter] public int CurrentChapter { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
-    [Parameter] public EventCallback<(BookId Book, int Chapter)> OnSelected { get; set; }
+    [Parameter] public EventCallback<(BookId Book, int Chapter, int Verse)> OnSelected { get; set; }
 
+    private string? _goto;
+    private string? _gotoError;
     private Testament _testament = Testament.OldTestament;
     private bool _pickingChapter;
     private BookListItemDto? _selected;
@@ -70,7 +80,20 @@
         }
 
         _pickingChapter = false;
-        await OnSelected.InvokeAsync((_selected.BookId, chapter));
+        await OnSelected.InvokeAsync((_selected.BookId, chapter, 0));
+    }
+
+    private async Task GoToAsync()
+    {
+        if (!PassageReferenceParser.TryParse(_goto, Books, out var book, out var chapter, out var verse))
+        {
+            _gotoError = "Reference not found.";
+            return;
+        }
+
+        _gotoError = null;
+        _goto = null;
+        await OnSelected.InvokeAsync((book, chapter, verse));
     }
 
     private async Task CloseOrBack()

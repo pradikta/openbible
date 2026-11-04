@@ -124,7 +124,7 @@ a.primary-btn {
     bottom: 0;
     z-index: 30;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 0.25rem;
     padding: 0.4rem 0.5rem calc(0.45rem + env(safe-area-inset-bottom));
     background: var(--ob-header);
@@ -155,6 +155,34 @@ a.primary-btn {
 
 .muted {
     color: var(--ob-muted);
+}
+
+.goto-row {
+    display: flex;
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+}
+
+.goto-row input {
+    flex: 1;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--ob-border);
+    border-radius: 0.6rem;
+    background: var(--ob-surface);
+    color: var(--ob-text);
+}
+
+.setting-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin: 0.8rem 0;
+}
+
+.verse-preview {
+    padding: 0.6rem;
+    border: 1px solid var(--ob-border);
+    border-radius: 0.6rem;
 }
 
 .reader-toolbar {

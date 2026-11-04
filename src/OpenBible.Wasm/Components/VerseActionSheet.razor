@@ -31,6 +31,7 @@
         <div class="row-actions">
             <button type="button" class="text-btn" @onclick="ToggleBookmark">@(Verse.IsBookmarked ? "Remove bookmark" : "Bookmark")</button>
             <button type="button" class="text-btn" @onclick="Copy">Copy</button>
+            <button type="button" class="text-btn" @onclick="Share">Share</button>
         </div>
         @if (!string.IsNullOrWhiteSpace(_status))
         {
@@ -94,6 +95,18 @@
         var text = $"{BookName} {Chapter}:{Verse.VerseNumber} {Verse.Text}";
         await JS.InvokeVoidAsync("openBibleCopy", text);
         _status = "Copied.";
+    }
+
+    private async Task Share()
+    {
+        if (Verse is null)
+        {
+            return;
+        }
+
+        var text = $"{BookName} {Chapter}:{Verse.VerseNumber} {Verse.Text}";
+        var shared = await JS.InvokeAsync<bool>("openBibleShare", text);
+        _status = shared ? "Shared." : "Copied (sharing is not supported here).";
     }
 
     private async Task CloseAsync()

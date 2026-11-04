@@ -240,9 +240,10 @@ else
         }
     }
 
-    private void Navigate(BookId book, int chapter)
+    private void Navigate(BookId book, int chapter, int verse = 0)
     {
-        Navigation.NavigateTo($"/read/{VersionId}/{(int)book}/{chapter}");
+        var suffix = verse > 0 ? $"/{verse}" : string.Empty;
+        Navigation.NavigateTo($"/read/{VersionId}/{(int)book}/{chapter}{suffix}");
     }
 
     private Task CloseSelector()
@@ -251,10 +252,10 @@ else
         return Task.CompletedTask;
     }
 
-    private Task OnBookSelected((BookId Book, int Chapter) selection)
+    private Task OnBookSelected((BookId Book, int Chapter, int Verse) selection)
     {
         _selectorOpen = false;
-        Navigate(selection.Book, selection.Chapter);
+        Navigate(selection.Book, selection.Chapter, selection.Verse);
         return Task.CompletedTask;
     }
 

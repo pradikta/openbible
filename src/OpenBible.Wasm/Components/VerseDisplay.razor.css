@@ -2,12 +2,14 @@
     padding: 0.35rem 0.4rem;
     margin: 0.15rem 0;
     border-radius: 0.45rem;
-    line-height: 1.7;
-    font-size: 1.05rem;
+    line-height: var(--ob-verse-line, 1.7);
+    font-size: var(--ob-verse-size, 1.05rem);
+    font-family: var(--ob-verse-font, inherit);
     cursor: pointer;
 }
 
 .verse-num {
+    display: var(--ob-verse-num-display, inline);
     font-size: 0.75rem;
     font-weight: 700;
     color: var(--ob-muted);
