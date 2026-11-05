@@ -4,12 +4,7 @@
 > Update this checklist incrementally as tasks are started `[/]` and completed `[x]`.  
 > Every milestone must pass `dotnet build` and `dotnet test` with zero warnings and zero errors before proceeding.
 >
-> **Progress snapshot (2026-11-04):** Phases 0–2 are substantially implemented; Phase 3 is in progress
-> (the YES2 parser reads metadata, books, text, `snappy-blocks`, pericopes, footnotes, xrefs, and `.yes.gz`;
-> all storage is still in-memory, so imported versions and user data are lost on reload); Phase 4 has its main pages and components, while Phase 5
-> remains partial. Latest verification: `dotnet build --no-incremental` succeeded with 0 warnings/errors
-> and `dotnet test --no-build --verbosity normal` passed all 89 tests. Browser/device offline behavior has
-> not been verified end-to-end.
+> **Progress snapshot (2026-11-05):** Fresh verification passed: `dotnet build --no-incremental` succeeded with **0 warnings and 0 errors**, and `dotnet test --no-build --verbosity normal` passed all **141 tests**. Phase 0 is complete. Phase 1 is implemented except for optional domain events/exceptions and additional entity-invariant tests. Phase 2 has the core CQRS use cases, with verse lookup, a separate installed-version metadata query, and validation-behavior tests still open. Phase 3 parsing and IndexedDB-backed persistence are implemented and covered by tests. Phase 4 reader, library, import, search, and study pages are implemented; import progress and real-device offline verification remain. Phase 5 CI and data-management controls are implemented; performance profiling/tuning, README screenshots/usage polish, and end-to-end offline verification remain.
 
 ---
 
@@ -29,13 +24,13 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
   - [x] Create `global.json` pinning .NET 10 SDK version (`10.0.100` or latest installed).
   - [x] Create classic solution file `OpenBible.sln` via `dotnet new sln -n OpenBible --format sln`.
   - [x] Create `.gitignore` tailored for .NET 10, Blazor WASM, and IDEs.
-- [/] **Centralized MSBuild Configurations**
+- [x] **Centralized MSBuild Configurations**
   - [x] Create `Directory.Build.props`:
     - [x] `TargetFramework`: `net10.0`
     - [x] `Nullable`: `enable`
     - [x] `ImplicitUsings`: `enable`
     - [x] `TreatWarningsAsErrors`: `true`
-  - [/] Create `Directory.Packages.props` for Central Package Management (CPM):
+  - [x] Create `Directory.Packages.props` for Central Package Management (CPM):
     - [x] Pin `MediatR` (and `MediatR.Contracts`)
     - [x] Pin `FluentValidation`
     - [x] Pin `Microsoft.AspNetCore.Components.WebAssembly`
@@ -141,7 +136,7 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
   - [x] `GetInstalledVersionsQuery` + `GetInstalledVersionsHandler`
   - [ ] `GetVersionMetadataQuery` + `GetVersionMetadataHandler`
   - [/] `PreviewYesFileQuery` + handler provides import metadata preview; a separate installed-version metadata query is not implemented.
-  - [/] `ImportYesFileCommand` + `ImportYesFileHandler` (handler exists; parser and persistent-storage gaps remain)
+  - [x] `ImportYesFileCommand` + `ImportYesFileHandler` (parses and persists imported versions)
   - [x] `DeleteVersionCommand` + `DeleteVersionHandler`
 - [x] **Use Cases: Search**
   - [x] `SearchBibleQuery` + `SearchBibleHandler` (supports full-text queries, scope filtering by Testament or Book)
@@ -151,6 +146,7 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
   - [x] `ToggleBookmarkCommand` + `ToggleBookmarkHandler`
   - [x] `SetVerseHighlightCommand` + `SetVerseHighlightHandler`
   - [x] `GetBookmarksQuery` + `GetBookmarksHandler`
+  - [x] Clear reading position, bookmarks, and highlights.
 - [x] **Dependency Injection Registration**
   - [x] Create `DependencyInjection.cs` with `AddApplication(this IServiceCollection)` registering MediatR, FluentValidation, and Behaviors.
 - [/] **Unit Tests (`OpenBible.Application.Tests`)**
@@ -173,25 +169,26 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
   - [x] Verse text reader uses book/chapter offsets and VarUInt lengths for both uncompressed and `snappy-blocks` compressed sections.
   - [x] `PericopeSectionReader`: parses data format versions 2 and 3 indexes plus version 4 blocks into `Pericope` entities (title, parallel passages, untitled headings skipped).
   - [x] `ArifEntrySectionReader` plus `FootnoteSectionReader` / `XRefSectionReader`: parse the ARIF index (version 1, sorted keys, relative offsets) into `FootnoteEntry` and `XRefEntry` entities attached to their verses. Inline `@<fN@>` / `@<xN@>` markers are rendered by `Application/Reading/Formatting/VerseMarkupFormatter`.
-- [/] **Decompression Engine**
+- [x] **Decompression Engine**
   - [x] Transparent `.yes.gz` GZip stream wrapper; `PrepareStream` uses a bounded spool to provide random access.
   - [x] Managed WASM-compatible Snappy block decoder (`YesFile/Compression/SnappyBlockDecoder`, no native dependency).
   - [x] `SnappyBlockStream`: seekable view over a `snappy-blocks` container using `block_size` and `compressed_block_sizes`, decompressing one block at a time.
-- [/] **Core Parser**
-  - [/] Implement `YesFileParser` implementing `IYesFileReader`:
+- [x] **Core Parser**
+  - [x] Implement `YesFileParser` implementing `IYesFileReader`:
     - [x] Validates the complete YES2 signature and section index bounds.
     - [x] Reads metadata, book/chapter indexes, and verse content without loading the whole file into memory.
     - [x] Asynchronously yields verses from uncompressed and `snappy-blocks` compressed text sections.
     - [x] Asynchronously yields pericope headings from the `pericopes` section.
     - [x] Attaches `footnotes` and `xrefs` entries to the verses addressed by their ARIF keys.
     - [x] GZip random access via bounded spool (`PrepareStream`).
-- [ ] **Offline Storage Implementations**
+- [x] **Offline Storage Implementations**
   - [x] Persist installed versions: `PersistentBibleRepository` snapshots each version as JSON through `IPersistentStore` (`IndexedDbPersistentStore` in the Wasm host via JS interop; degrades to memory). Restored at startup by `PersistenceInitializer`.
-  - [x] Persist user data: `PersistentUserDataRepository` snapshots reading position, bookmarks and highlights after each change.
+  - [x] Persist user data: `PersistentUserDataRepository` snapshots reading position, bookmarks and highlights; study data and app settings have persistent repositories.
   - [x] Search index is rebuilt from persisted versions at startup (`SimpleSearchIndex` stays in-memory; no separate persisted index).
-- [/] **Dependency Injection Registration**
+  - [x] Seed bundled Bible content on first run.
+- [x] **Dependency Injection Registration**
   - [x] Create `DependencyInjection.cs` with `AddInfrastructure(this IServiceCollection)`; the host overrides `IPersistentStore`.
-- [/] **Integration Tests (`OpenBible.Infrastructure.Tests`)**
+- [x] **Integration Tests (`OpenBible.Infrastructure.Tests`)**
   - [x] Create minimal fixture `.yes` test file in `tests/fixtures/sample.yes` (Genesis 1, 3 verses; used by `SampleYesFixtureTests` and for manual import testing).
   - [x] Test `YesFileParser` header validation and section parsing (synthetic YES2 fixtures cover index bounds, books, text, and pericopes).
   - [x] Test Snappy decompression accuracy against known sample blocks (literal, copy-1, copy-2, truncated and out-of-range blocks).
@@ -215,11 +212,11 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
   - [x] iOS Safe Area Insets: CSS handling for notch and home bar (`padding-top: env(safe-area-inset-top)`).
   - [x] Theme Support: Automatic light/dark mode based on `prefers-color-scheme` with manual override toggle.
 - [/] **Page Implementations**
-  - [/] **`ReaderPage.razor` (Core Bible Reader)**:
+  - [x] **`ReaderPage.razor` (Core Bible Reader)**:
     - [x] Renders current chapter with book title and chapter number.
     - [x] Displays verses with verse numbers, selectable for highlights/bookmarks.
     - [x] Displays inline pericope section headings.
-    - [/] Footnote and cross-reference marks render inline (superscript index for notes, `※` for cross-references) with the note text in a tooltip; footnotes are also listed under a "Footnotes" heading in the verse action sheet.
+    - [x] Footnote and cross-reference marks render inline; footnotes are also listed under a "Footnotes" heading in the verse action sheet.
     - [x] Swipe left/right touch gesture support for previous/next chapter navigation.
     - [x] Quick navigation header (tap book/chapter to open picker).
   - [x] **`LibraryPage.razor` (Version Management)**:
@@ -231,7 +228,7 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
     - [x] File picker accepts `.yes` and `.yes.gz` files.
     - [x] Pre-parse validation display (Title, Language, Book Count).
     - [ ] Import progress bar with streaming status.
-  - [/] **`SearchPage.razor` (Full-Text Search)**:
+  - [x] **`SearchPage.razor` (Full-Text Search)**:
     - [x] Search input with debounced execution.
     - [x] Scope filter (All, Old Testament, New Testament, Current Book).
     - [x] Query keyword highlighting and client-side pagination ("Show more", 50 per page).
@@ -256,22 +253,25 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
   - [ ] Profile memory during large `.yes` file imports (ensure streaming without memory spikes).
 - [x] **Error Boundaries & Resilience**
   - [x] Add Blazor `<ErrorBoundary>` in layout for graceful crash recovery.
-- [ ] **CI Workflow & Documentation**
-  - [ ] Create `.github/workflows/ci.yml` (Runs `dotnet build` + `dotnet test` on PRs and pushes).
-  - [ ] Complete `README.md` with screenshots and usage guides.
+- [x] **CI Workflow**
+  - [x] `.github/workflows/ci.yml` runs build/test, compose validation, and amd64/arm64 container smoke tests.
+- [/] **Documentation Polish**
+  - [x] README documents architecture, features, build/test/run, and current roadmap.
+  - [ ] Add product screenshots and complete user-facing setup/usage guidance.
+- [x] **Data Management**
+  - [x] Clear reading history/bookmarks/highlights and provide a confirmed factory reset from the Library.
 - [ ] **End-to-End Offline Verification**
   - [ ] Install PWA on iOS Safari / Android Chrome.
   - [ ] Import `.yes` file -> Navigate chapters -> Highlight verse -> Search -> Disconnect network -> Reload and verify complete offline functionality.
 
 ---
 
-## Not yet in scope (androidbible features without a plan item)
+## Implemented features beyond the original milestones and remaining scope
 
-- [/] Parallel version panes (a per-verse compare page exists; side-by-side chapter panes remain)
-- [x] Notes, labels, progress marks, bundled sample reading plans and daily devotions, display settings, share, go-to-reference (stored under new key `openbible.study`; `/markers`, `/plans`, `/devotion`, `/compare`, `/settings`)
-- [ ] Downloadable reading plans and devotions (only bundled samples exist)
-- [x] Version management: Library lists versions, sets a default (key `openbible.settings`), links to Import, and shows the bundled official catalog (251 presets). "Install" downloads through the new `OpenBible.Server` ASP.NET Core host (`/api/catalog/download/{preset}`, bundled presets and official hosts only; it also serves the WASM files) and imports directly into the database; on static hosting, "Manual download" + Import is the fallback because catalog hosts send no CORS headers. The parser now reads real YES2 files (index size counts records only) and re-sniffs gzip on each read.
-- [x] Backup/export of user data: More > Backup & restore downloads one versioned JSON file (positions, bookmarks, highlights, notes, labels, marks, plan progress, default version) and restores it with rollback on invalid data (`IBackupService`, `UserDataBackupService`). Installed Bible texts and display settings are not included.
-- [ ] Sync of user data across devices
-- [ ] Songs
-
+- [/] Per-verse version comparison is implemented; side-by-side chapter panes remain.
+- [x] Notes, labels, progress marks, bundled sample reading plans and daily devotions, display settings, share, and go-to-reference are implemented (`/markers`, `/plans`, `/devotion`, `/compare`, `/settings`).
+- [ ] Downloadable reading plans and devotions; only bundled samples are available.
+- [x] Version management: Library lists versions, sets a default (`openbible.settings`), links to Import, and shows the bundled official catalog (251 presets). Install downloads through the `OpenBible.Server` endpoint (`/api/catalog/download/{preset}`), restricted to bundled presets and official hosts, then imports locally. On static hosting, use "Manual download" + Import because catalog hosts do not send CORS headers. The server also serves the WASM files.
+- [x] Backup/export and restore: More > Backup & restore transfers versioned JSON (positions, bookmarks, highlights, notes, labels, progress marks, plan progress, and default version), with rollback on invalid data (`IBackupService`, `UserDataBackupService`). Installed Bible texts and display settings are excluded.
+- [ ] Sync of user data across devices.
+- [ ] Songs.

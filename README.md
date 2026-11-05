@@ -76,8 +76,8 @@ flowchart TB
     UI --> UC
     UC --> IFC
     UC --> ENT
-    Infra -. implements .-> IFC
-    Wasm -. registers in Program.cs .-> Infra
+    Infra -.-> "IFC (implements)"
+    Wasm -- registers in Program.cs --> Infra
     Infra --> App
 ```
 
