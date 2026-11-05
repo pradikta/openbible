@@ -16,6 +16,12 @@ const base = "/";
 const baseUrl = new URL(base, self.origin);
 const manifestUrlList = self.assetsManifest.assets.map(asset => new URL(asset.url, baseUrl).href);
 
+// index.html requests some assets without their fingerprint (for example blazor.webassembly.js),
+// so map the plain name to the fingerprinted manifest entry to serve it from the cache offline.
+const fingerprintedUrls = new Map(self.assetsManifest.assets
+    .map(asset => [new URL(asset.url.replace(/\.[a-z0-9]{10}(\.\w+)$/, '$1'), baseUrl).href, new URL(asset.url, baseUrl).href])
+    .filter(([plain, actual]) => plain !== actual));
+
 async function onInstall(event) {
     console.info('Service worker: Install');
 
@@ -24,7 +30,15 @@ async function onInstall(event) {
         .filter(asset => offlineAssetsInclude.some(pattern => pattern.test(asset.url)))
         .filter(asset => !offlineAssetsExclude.some(pattern => pattern.test(asset.url)))
         .map(asset => new Request(asset.url, { integrity: asset.hash, cache: 'no-cache' }));
-    await caches.open(cacheName).then(cache => cache.addAll(assetsRequests));
+    const cache = await caches.open(cacheName);
+    await cache.addAll(assetsRequests);
+    // index.html is not in the assets manifest and the server only serves it at the root,
+    // but offline navigation is answered from the cache entry stored under 'index.html'.
+    const shell = await fetch(base, { cache: 'no-cache' });
+    if (!shell.ok) {
+        throw new Error(`Unable to cache the app shell: ${shell.status}`);
+    }
+    await cache.put('index.html', shell);
 }
 
 async function onActivate(event) {
@@ -49,6 +63,9 @@ async function onFetch(event) {
         const request = shouldServeIndexHtml ? 'index.html' : event.request;
         const cache = await caches.open(cacheName);
         cachedResponse = await cache.match(request);
+        if (!cachedResponse && fingerprintedUrls.has(event.request.url)) {
+            cachedResponse = await cache.match(fingerprintedUrls.get(event.request.url));
+        }
     }
 
     return cachedResponse || fetch(event.request);
