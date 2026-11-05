@@ -283,7 +283,7 @@ Phase 6: Multi-source, multi-format content (empty app, registry from deployment
 
 ## Phase 6: Multi-source, multi-format content (next milestone)
 
-> Goal: ship the app **empty**. No embedded translation text, no embedded translation list, and no embedded hosts. The source registry (one host per format) comes from deployment configuration. Design is in [ADR 0004](docs/adr/0004-multi-source-bible-formats.md) (status: Proposed).
+adr> Goal: ship the app **empty**. No embedded translation text, no embedded translation list, and no embedded hosts. The source registry (one host per format) comes from deployment configuration. Design is in [ADR 0004](docs/adr/0004-multi-source-bible-formats.md) (status: Proposed).
 >
 > Several items touch **ASK FIRST** areas in `AGENTS.md` (storage schema/contracts, `.yes` parsing structure, ARI). Get approval before implementing those.
 
