@@ -14,6 +14,9 @@
 Phase 0: Scaffolding ──► Phase 1: Domain Core ──► Phase 2: Application CQRS
                                                            │
 Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .yes Parser
+        │
+        ▼
+Phase 6: Multi-source, multi-format content (empty app, registry from deployment config)
 ```
 
 ---
@@ -275,3 +278,55 @@ Phase 5: Release ◄── Phase 4: Blazor UI & PWA ◄── Phase 3: Infra & .
 - [x] Backup/export and restore: More > Backup & restore transfers versioned JSON (positions, bookmarks, highlights, notes, labels, progress marks, plan progress, and default version), with rollback on invalid data (`IBackupService`, `UserDataBackupService`). Installed Bible texts and display settings are excluded.
 - [ ] Sync of user data across devices.
 - [ ] Songs.
+
+---
+
+## Phase 6: Multi-source, multi-format content (next milestone)
+
+> Goal: ship the app **empty**. No embedded translation text, no embedded translation list, and no embedded hosts. The source registry (one host per format) comes from deployment configuration. Design is in [ADR 0004](docs/adr/0004-multi-source-bible-formats.md) (status: Proposed).
+>
+> Several items touch **ASK FIRST** areas in `AGENTS.md` (storage schema/contracts, `.yes` parsing structure, ARI). Get approval before implementing those.
+
+- [ ] **Decision & Design**
+  - [ ] Review and accept ADR 0004.
+  - [ ] Decide the versification strategy for non-66-book / differently numbered sources (ARI mapping).
+  - [ ] Decide which hosts to document in `sources.example.json` (one per format); none are active by default.
+- [ ] **Remove embedded content**
+  - [ ] Remove the bundled KJV and `BundledBibleSeeder`.
+  - [ ] Remove the embedded `version_config.json` and `BundledVersionCatalog`.
+  - [ ] Add an onboarding empty state (no translation installed) with links to the source browser and manual import.
+  - [ ] Keep installed data for existing users untouched.
+- [ ] **Source registry (deployment configuration)**
+  - [ ] Add `IBibleSource`, `ISourceCatalog`, and `ISourceRegistry` contracts (Domain).
+  - [ ] Server loads the registry from ASP.NET Core configuration (environment variables or a mounted JSON file); no default registry in the image.
+  - [ ] Expose the registry to the client through a small endpoint (for example `GET /api/sources`); empty registry hides the source browser and leaves manual import.
+  - [ ] Support catalog kinds `live` (query the host) and `file` (operator-supplied catalog, for example the former Yuku `version_config.json`).
+  - [ ] Add `sources.example.json` (documentation only, not loaded by default) and document it in the README, `docker-compose.yml`, and the deploy notes.
+  - [ ] Derive the `OpenBible.Server` download allow-list from the registry and remove the hard-coded host list.
+- [ ] **Proxy security**
+  - [ ] HTTPS only; host must match a registry entry, re-checked after every redirect.
+  - [ ] Reject private, loopback, and link-local addresses (SSRF), including after DNS resolution.
+  - [ ] Enforce maximum download size, timeout, and allowed content types; forward no cookies or credentials.
+  - [ ] Offline tests for each rule (no live HTTP).
+- [ ] **Format abstraction**
+  - [ ] Add `IBibleFormatReader` and a reader selector (declared format, plus file signature for manual import).
+  - [ ] Move the `.yes` parser behind `IBibleFormatReader` with no behavior change; existing tests stay green.
+  - [ ] Store `Format` and `SourceId` with version metadata (snapshot-compatible).
+- [ ] **YES source** (existing format)
+  - [ ] Implement a runtime `ISourceCatalog` for the YES host; no embedded list.
+- [ ] **USFM source**
+  - [ ] USFM reader with offline fixtures and tests.
+  - [ ] Runtime catalog for the USFM host.
+- [ ] **SWORD source**
+  - [ ] SWORD module reader (including `.conf`) with offline fixtures and tests.
+  - [ ] Versification mapping to ARI.
+  - [ ] Runtime catalog for the SWORD host.
+- [ ] **Rights information**
+  - [ ] Show license text per translation before install when the source provides it; say so when it does not.
+  - [ ] Require confirmation before install and store the shown license text with the installed version.
+- [ ] **Documentation**
+  - [ ] Update README (empty-by-default behavior, sources, formats, rights notice) and remove references to the bundled KJV and the 251-preset catalog.
+  - [ ] Update Docker/CI smoke tests that assume a bundled KJV.
+- [ ] **Verification**
+  - [ ] `dotnet build --no-incremental` and `dotnet test` pass with zero warnings; all tests offline.
+  - [ ] Manual check: fresh install is empty, adding a translation from each source works, and offline reading works after install.
