@@ -44,15 +44,14 @@ check "/_framework/blazor.webassembly.js" "javascript"
 check "/css/tailwind.css" "text/css"
 check "/manifest.webmanifest" "json"
 check "/version.json" "json"
-# The bundled KJV is what makes the reader work offline on first run.
-check "/data/en-kjv.yes.gz" "."
+check "/api/sources" "json"
 
-# Only catalog presets are proxied; anything else must be rejected, not forwarded.
-code=$(curl --silent --output /dev/null --max-time 30 --write-out '%{http_code}' "${BASE_URL}/api/catalog/download/not-a-preset" || echo 000)
+# Only configured sources are proxied; anything else must be rejected, not forwarded.
+code=$(curl --silent --output /dev/null --max-time 30 --write-out '%{http_code}' "${BASE_URL}/api/sources/not-a-source/catalog" || echo 000)
 if [ "${code}" = "404" ]; then
-  echo "ok   unknown preset rejected"
+  echo "ok   unknown source rejected"
 else
-  echo "FAIL unknown preset returned HTTP ${code}, expected 404" >&2
+  echo "FAIL unknown source returned HTTP ${code}, expected 404" >&2
   failed=1
 fi
 

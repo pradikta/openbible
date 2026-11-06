@@ -1,7 +1,6 @@
 using NSubstitute;
 using OpenBible.Application.BibleVersions.Commands.SetDefaultVersion;
 using OpenBible.Application.BibleVersions.Queries.GetDefaultVersion;
-using OpenBible.Application.BibleVersions.Queries.GetVersionCatalog;
 using OpenBible.Domain.Entities;
 using OpenBible.Domain.Interfaces;
 using Xunit;
@@ -62,22 +61,5 @@ public sealed class VersionManagementHandlerTests
             .Handle(new GetDefaultVersionQuery(), CancellationToken.None);
 
         Assert.Equal("kjv", result.Value);
-    }
-
-    [Fact]
-    public async Task Catalog_FiltersCaseInsensitively()
-    {
-        var catalog = Substitute.For<IVersionCatalog>();
-        catalog.GetAll().Returns(new[]
-        {
-            new CatalogVersion("a", "en", "KJV", "King James Version", "Old English", "http://x/a"),
-            new CatalogVersion("b", "id", "TB", "Terjemahan Baru", "Indonesia", "http://x/b")
-        });
-
-        var result = await new GetVersionCatalogHandler(catalog)
-            .Handle(new GetVersionCatalogQuery("james"), CancellationToken.None);
-
-        Assert.Single(result.Value!);
-        Assert.Equal("a", result.Value![0].PresetName);
     }
 }

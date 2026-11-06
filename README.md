@@ -29,7 +29,7 @@ The reader, search, and personal study data run in the browser. The app needs an
 
 ## Status
 
-The solution builds with zero warnings and all tests pass (Domain 18, Application 69, Infrastructure 54; 141 in total). Implemented versus pending:
+The solution builds with zero warnings and all tests pass (Domain 41, Application 70, Infrastructure 116; 227 in total). Implemented versus pending:
 
 | Area | State |
 |---|---|
@@ -38,22 +38,29 @@ The solution builds with zero warnings and all tests pass (Domain 18, Applicatio
 | UI pages: Reader, Library, Import, Search, and the More tools; swipe navigation; dark mode; safe-area layout | Implemented |
 | `.yes` parsing: metadata, books, verse text, `snappy-blocks`, pericopes, footnotes, xrefs, `.yes.gz` | Implemented (see [ADR 0003](docs/adr/0003-yes-file-format-spec.md)) |
 | Persistence: working stores snapshotted to IndexedDB and restored at startup; the search index is rebuilt on restore | Implemented |
-| Bundled full KJV (public domain) imported on first run, so the reader works out of the box | Implemented |
-| Translation catalog and server-side download proxy | Implemented |
+| Empty by default: no bundled Bible text or catalog | Implemented |
+| Deployment-configured source registry and protected download proxy | Implemented |
+| YES (`.yes`/`.yes.gz`) and USFM (ZIP or single file) readers | Implemented |
+| SWORD (zText/zText4, ZIP, KJV versification) reader | Implemented |
+| Automatic format detection for manual import | Implemented |
+| Install-time license confirmation and storage | Implemented |
 | Backup and restore of personal data | Implemented |
 | CI workflow, Docker image, GHCR publishing, Portainer redeploy | Implemented |
-| Import progress UI, trimming/Brotli tuning, memory profiling | Pending |
+| Import progress UI | Implemented |
+| Trimming/Brotli tuning | Implemented |
+| Side-by-side chapter comparison | Implemented |
+| Memory profiling | Pending |
 | Offline end-to-end verification on physical devices | Pending |
-| Side-by-side chapter panes, downloadable plans/devotions, sync, songs | Not started |
+| Downloadable plans/devotions, sync, songs | Not started |
 
 ## Features
 
 - **Reader**: chapter view with pericope headings, previous/next chapter by swipe or buttons, book selector, and automatic resume of the last reading position.
 - **Verse actions**: highlight with colors, toggle bookmark, add notes and labels, set progress marks, copy or share verse text.
 - **Search**: debounced (300 ms) full-text search with a scope filter (All / Old Testament / New Testament / Current book) and keyword highlighting.
-- **Study tools**: bundled sample reading plans with progress, daily devotions, verse comparison across installed translations, go-to-reference, and display settings.
-- **Library (Bible versions)**: list installed versions, set the default version, list bookmarks, delete a version, open Import, and browse the bundled Alkitab catalog (251 presets) with one-click install through `OpenBible.Server`.
-- **Import**: preview a `.yes` or `.yes.gz` file's metadata before importing it (64 MB limit).
+- **Study tools**: bundled sample reading plans with progress, daily devotions, per-verse and side-by-side chapter comparison across installed translations, go-to-reference, and display settings.
+- **Library (Bible versions)**: list installed versions, set the default version, list bookmarks, delete a version, open Import, and browse translations from the deployment-configured source registry with one-click install through `OpenBible.Server`.
+- **Import**: preview a `.yes`, `.yes.gz`, USFM (`.usfm`/`.sfm` or a ZIP), or SWORD package before importing it (64 MB limit), with format detection and a streaming progress bar while verses are saved and indexed.
 - **Backup and restore** (More menu): export personal data to one versioned JSON file and restore it later; see [Backup and restore](#backup-and-restore).
 - **Data management**: clear history, or run a confirmed factory reset that removes all local app data.
 - **PWA polish**: iOS safe-area insets, system dark/light mode plus a manual toggle, and a service worker with a cache-first strategy for published assets.
@@ -63,35 +70,39 @@ The solution builds with zero warnings and all tests pass (Domain 18, Applicatio
 
 OpenBible is intended for **personal, non-commercial use only**. Do not sell access to this app, offer it as a paid service, or use it for commercial purposes.
 
-This statement describes the intended use of this project; it does not grant rights to third-party software, Bible translations, catalogs, or other content. Each translation may have its own copyright, license, and redistribution restrictions. Check and follow the applicable terms before importing, sharing, or redistributing translation files. The bundled King James Version text is public domain in the United States; public-domain status can differ by jurisdiction.
+This statement describes the intended use of this project; it does not grant rights to third-party software, Bible translations, catalogs, or other content. Each translation may have its own copyright, license, and redistribution restrictions. Check and follow the applicable terms before importing, sharing, or redistributing translation files. OpenBible ships no Bible text; you provide the translations you install.
 
-There is no `LICENSE` file in this repository. Do not assume that the upstream Alkitab project’s license or a translation’s terms automatically apply to OpenBible or to content bundled with it.
+There is no `LICENSE` file in this repository. Do not assume that the upstream Alkitab project’s license or a translation’s terms automatically apply to OpenBible or to content you install.
 
 ### Translation licenses are the user's responsibility
 
-- **You are responsible** for confirming that you may download, store, use, or share every translation you install or import. This applies to catalog downloads, `.yes` files you obtain elsewhere, and any copy you host yourself.
+- **You are responsible** for confirming that you may download, store, use, or share every translation you install or import. This applies to source downloads, `.yes` files you obtain elsewhere, and any copy you host yourself.
 - **The developer and contributors are not responsible** for the content, accuracy, copyright status, or licensing of any translation, and accept no liability for how users or operators use them. The software is provided as is, without warranty.
-- OpenBible does not host translation files, apart from the bundled KJV. Catalog items are fetched on demand from third-party sources that are outside this project's control and may change over time.
-- The catalog metadata carries little or no rights information, and OpenBible does not verify rights for any entry. The absence of a notice does not mean a translation is free to use. Check the owner or publisher of each translation (for example the Bible society, Wycliffe/SIL, or the original translator) before relying on it.
-- If you host OpenBible publicly or for others, you are the operator and are responsible for the translations your instance offers. Remove or disable any catalog entries you do not have the right to distribute.
-- If you are a rights holder and want a catalog entry removed, contact the upstream catalog maintainers; for this repository, open an issue.
+- OpenBible does not host translation files. Source items are fetched on demand from third-party hosts that are outside this project's control and may change over time.
+- Source metadata may carry little or no rights information, and OpenBible does not verify rights for any entry. The absence of a notice does not mean a translation is free to use. Check the owner or publisher of each translation (for example the Bible society, Wycliffe/SIL, or the original translator) before relying on it.
+- If you host OpenBible publicly or for others, you are the operator and are responsible for the translations your instance offers. Remove or disable any source entries you do not have the right to distribute.
+- If you are a rights holder and want a source entry removed, contact the upstream catalog maintainers; for this repository, open an issue.
 
 ## Get started
 
 ### Run locally
 
-Install the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0), then run from the repository root:
+Install the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0), then run from the repository root. To try the Library source browser, copy the placeholder example registry and replace the host/catalog with a source you are authorized to use:
 
 ```powershell
+# Only if you do not already have a local sources.json:
+if (-not (Test-Path src/OpenBible.Server/sources.json)) {
+    Copy-Item src/OpenBible.Server/sources.example.json src/OpenBible.Server/sources.json
+}
 dotnet restore
 dotnet run --project src/OpenBible.Server
 ```
 
-Open the local URL printed by the .NET tooling. `OpenBible.Server` serves the app and catalog API together. The bundled KJV is seeded on first startup.
+`OpenBible.Server` loads `src/OpenBible.Server/sources.json` automatically; set `OPENBIBLE_SOURCES_FILE` to use another path. Edit the copied file to point at a host/catalog you are authorized to use. The file is ignored by git, so each developer can keep their own. Open the local URL, go to **Library**, and install from the configured source. No translation is bundled; without a configured source, use **Import** with a `.yes`, `.yes.gz`, USFM, or SWORD file.
 
 ### Run with Docker
 
-Docker serves the web app and its optional catalog-download API:
+Docker serves the web app and its optional source API:
 
 ```powershell
 docker compose up --build
@@ -109,14 +120,65 @@ Open the app in a supported browser and use its **Install app** or **Add to Home
 2. **Study a verse:** Select a verse to open its actions. Add a bookmark or highlight, create notes and labels, set a progress mark, or copy/share the verse.
 3. **Import a translation:** Open **Import**, choose a `.yes` or `.yes.gz` file, review its metadata, then confirm. The current file-size limit is 64 MB.
 4. **Search:** Enter terms and optionally limit results to the Old Testament, New Testament, or current book. Select a result to navigate to that passage.
-5. **More tools:** Use the More menu for reading plans, daily devotion, verse comparison, display settings, and backup/restore.
+5. **More tools:** Use the More menu for reading plans, daily devotion, verse and chapter comparison, display settings, and backup/restore.
 6. **Manage data:** Library lists translations, changes the default, and provides history clearing and a confirmed factory reset. A factory reset deletes local app data.
 
-### Translation catalog
+### Adding translations
 
-The catalog lists bundled presets. Installing a catalog item downloads its `.yes` file through `OpenBible.Server`; the server only allows presets listed in its bundled catalog and downloads only from its configured official sources. The browser cannot download directly from those sources because they do not enable CORS.
+OpenBible ships with no Bible text. Add a translation from **Library** (when the deployment configures a source registry) or import a `.yes` / `.yes.gz` file from **Import**. Source downloads go through `OpenBible.Server`; the browser cannot fetch third-party hosts directly because they do not enable CORS.
 
-The Docker image includes the server. If using a static host without this API, download a translation manually and import it from the Import page. Catalog installation needs internet access; reading an already installed translation does not.
+The Docker image includes the server. On a static host without this API, use manual import. Installing a translation needs internet access; reading an installed translation does not.
+
+### Source registry (optional)
+
+`OpenBible.Server` can expose a deployment-configured source registry for multi-format installs. Configure it with the `Sources` array (environment variables such as `OPENBIBLE_SOURCES__0__ID`, or a mounted JSON file named by `OPENBIBLE_SOURCES_FILE`). `sources.example.json` and `sources/yes-catalog.example.json` are documentation only and are not loaded by default.
+
+- `GET /api/sources` lists configured sources; it is empty by default.
+- `GET /api/sources/{sourceId}/catalog` lists translations from a `live` or `file` catalog.
+- `GET /api/sources/{sourceId}/download/{translationId}` proxies a download after HTTPS host checks, DNS/SSRF checks, size and content-type limits, with cookies and credentials disabled.
+
+The app installs from the registry when it is configured; an empty registry leaves manual import as the only path.
+
+#### Deploying a source registry
+
+`OpenBible.Server` reads the registry from ASP.NET Core configuration. Use either environment variables or a mounted JSON file.
+
+**Environment variables** (works well in Portainer, Docker Compose, or a GitHub-managed stack):
+
+```text
+OPENBIBLE_SOURCES__0__ID=yes-example
+OPENBIBLE_SOURCES__0__DISPLAYNAME=YES example
+OPENBIBLE_SOURCES__0__FORMAT=yes
+OPENBIBLE_SOURCES__0__HOST=example.org
+OPENBIBLE_SOURCES__0__CATALOGKIND=file
+OPENBIBLE_SOURCES__0__CATALOGPATH=/config/yes-catalog.json
+```
+
+**Mounted JSON file** (same shape as `sources.example.json`, with a top-level `Sources` array):
+
+```yaml
+services:
+  openbible:
+    environment:
+      OPENBIBLE_SOURCES_FILE: /config/sources.json
+    volumes:
+      - ./sources.json:/config/sources.json:ro
+```
+
+The file is optional; if the path is unset or the file is absent, the registry is empty. Without `OPENBIBLE_SOURCES_FILE`, the server also loads `sources.json` from its content root automatically. The checked-in `src/OpenBible.Server/sources.example.json` is a copyable template; `sources.json` and `*.local.json` are ignored by git.
+
+The examples use `example.org` placeholders. Do not put real hosts or full download URLs into committed files unless you have verified that the translation's license and the host's terms permit it. Keep real hosts/URLs in the gitignored `sources.json` and `*.local.json` files, and keep license text with the source entry so the app can show it before install.
+
+##### GitHub Actions environment variables and secrets
+
+The workflow in this repository builds the image and triggers a Portainer redeploy. It does **not** mutate the running stack, so source configuration must also exist in the Portainer stack environment (or as a mounted file). A common setup is:
+
+1. **Settings → Environments → `PRD` → Environment variables**: store non-sensitive registry values, for example `OPENBIBLE_SOURCES__0__ID`, `OPENBIBLE_SOURCES__0__HOST`, and `OPENBIBLE_SOURCES__0__CATALOGKIND`. Reference them in a workflow as `${{ vars.NAME }}`.
+2. **Settings → Environments → `PRD` → Environment secrets**: store credentials only, such as `PORTAINER_WEBHOOK_URL`, `CF_ACCESS_CLIENT_ID`, and `CF_ACCESS_CLIENT_SECRET`. Reference them as `${{ secrets.NAME }}`.
+3. **Portainer stack**: set the same `OPENBIBLE_SOURCES__*` keys in the stack environment, or mount `sources.json` and set `OPENBIBLE_SOURCES_FILE`. Changing a GitHub variable alone does not update a running container.
+4. **GitHub as the source of truth (optional)**: add a deployment step that calls the Portainer API to update the stack environment before redeploying. Keep registry values in environment variables, not secrets, unless the value is actually sensitive.
+
+Do not commit `sources.json`, `*.local.json`, or real host credentials; they are ignored by git and the committed examples use placeholders. The proxy does not forward cookies or credentials, so authenticated or private catalogs are not supported; use a host that serves files without authentication.
 
 ## Offline use and stored data
 
@@ -151,7 +213,6 @@ flowchart TB
         YES["YesFileParser + section readers<br/>GZip detection, Snappy"]
         REPO["Persistent repositories<br/>(Bible, user data, study data, settings)"]
         IDX["SimpleSearchIndex<br/>(rebuilt at startup)"]
-        SEED["BundledBibleSeeder"]
     end
     subgraph App["OpenBible.Application"]
         UC["Commands, Queries, Handlers"]
@@ -216,7 +277,7 @@ sequenceDiagram
     participant H as GetChapterHandler
     participant Repo as IBibleRepository
     U->>R: Open /read/{version}/{book}/{chapter}
-    R->>M: GetBookListQuery
+    R->>M: GetBookListQuery(VersionId)
     R->>M: GetChapterQuery
     M->>H: Handle
     H->>Repo: GetChapterVersesAsync(...)
@@ -248,26 +309,33 @@ sequenceDiagram
     P-->>M: verses (streamed)
     M->>Repo: Save version, books, verses
     Repo->>Repo: Snapshot to IndexedDB
+    M-->>I: ImportProgress updates (saving, indexing)
     M-->>I: Result
 ```
 
-### Installing from the catalog
+### Installing from a configured source
 
 ```mermaid
 sequenceDiagram
     actor U as User
     participant L as Library (VersionCatalog)
     participant M as IMediator
+    participant D as ISourceDirectory
     participant S as OpenBible.Server
-    participant H as Official catalog host
-    U->>L: Tap Install
-    L->>M: DownloadVersionCommand(preset)
-    M->>S: GET /api/catalog/download/{preset}
-    S->>S: Check preset and host allow-list
-    S->>H: Download .yes file
+    participant H as Source host
+    U->>L: Pick a source and translation
+    L->>M: GetSourcesQuery / GetSourceCatalogQuery
+    M->>D: GET /api/sources, /api/sources/{id}/catalog
+    U->>L: Install
+    L->>M: InstallSourceVersionCommand
+    M->>D: GET /api/sources/{id}/download/{translation}
+    D->>S: Proxy request
+    S->>S: HTTPS host, SSRF, size, and content-type checks
+    S->>H: Download file
     H-->>S: File stream
-    S-->>M: Stream
-    M->>M: Same flow as ImportYesFileCommand
+    S-->>D: File stream
+    D-->>M: Buffered stream
+    M->>M: Import with the declared format reader
     M-->>L: Result
 ```
 
@@ -389,7 +457,7 @@ Upstream references: [architecture](https://github.com/yukuku/androidbible/blob/
 
 - `manifest.webmanifest` with `display: standalone` and Apple meta tags in `index.html`.
 - `service-worker.published.js` precaches published assets with a cache-first strategy.
-- `openbible.css` uses `env(safe-area-inset-*)` and `prefers-color-scheme`; `MainLayout` adds a manual theme toggle and an `ErrorBoundary`.
+- `tailwind.css` and the scoped component styles use `env(safe-area-inset-*)` and `prefers-color-scheme`; `MainLayout` adds a manual theme toggle and an `ErrorBoundary`.
 - App logic and tests do not need network access; only catalog installation does.
 - Offline reload and service-worker behaviour still need end-to-end verification on real devices.
 
@@ -415,9 +483,9 @@ global.json                  .NET SDK pin
 src/
   OpenBible.Domain/          entities, value objects, contracts
   OpenBible.Application/     use cases, behaviors, DTOs, Result
-  OpenBible.Infrastructure/  YesFile parser, repositories, search, seeder
+  OpenBible.Infrastructure/  YesFile parser, source proxy helpers, repositories, search, and bundled reading content
   OpenBible.Wasm/            Blazor WASM host (Pages, Components, Layout, wwwroot)
-  OpenBible.Server/          ASP.NET Core host and catalog download API
+  OpenBible.Server/          ASP.NET Core host and source registry/download API
 tests/
   OpenBible.Domain.Tests/
   OpenBible.Application.Tests/
@@ -455,14 +523,14 @@ Run the test suite after building:
 dotnet test --no-build
 ```
 
-Tests use xUnit, NSubstitute, and FluentAssertions. Domain tests cover ARI math and value-object equality; Application tests mock the Domain contracts to test handlers; Infrastructure tests exercise the parser and repositories. They run offline and do not make network requests.
+Tests use xUnit and NSubstitute. Domain tests cover ARI math, value-object equality, entity invariants, and the book catalog; Application tests mock the Domain contracts to test handlers and validation; Infrastructure tests exercise the parser and repositories. They run offline and do not make network requests.
 
 ## CI and deployment
 
 ```mermaid
 flowchart LR
     PR["Pull request / push to main"] --> CI["CI workflow"]
-    CI --> B["Build + test (141 tests)"]
+    CI --> B["Build + test (227 tests)"]
     CI --> C["Validate docker compose"]
     CI --> S["Smoke test amd64 + arm64"]
     B & C & S --> OK{"All green on main?"}
@@ -481,7 +549,7 @@ The [CI workflow](.github/workflows/ci.yml) (named `CI`) only verifies. It runs 
 
 ### Docker deployment
 
-One image serves the PWA and the catalog download API (`OpenBible.Server`) on port `8080`. The KJV is bundled, so a fresh container is readable offline after the first load.
+One image serves the PWA and the source API (`OpenBible.Server`) on port `8080`. No Bible text is bundled; add a translation from Library (when a source is configured) or import a file.
 
 ```powershell
 docker compose up --build        # http://localhost:8080 (set OPENBIBLE_PORT to change)
@@ -518,12 +586,12 @@ Other notes:
 
 See [PLAN.md](PLAN.md) for the detailed checklist. Remaining work includes:
 
-- Import progress reporting for large files.
-- Release-size tuning and memory profiling during large imports.
+- Memory profiling during large imports and memory-footprint tuning of the `.yes` parser.
 - End-to-end offline verification on physical iOS and Android devices.
-- Side-by-side chapter comparison, downloadable reading plans/devotions, cross-device sync, and songs.
-- Additional use cases such as direct verse lookup and a dedicated installed-version metadata query.
+- README screenshots and complete user-facing setup/usage guidance.
+- Downloadable reading plans/devotions, cross-device sync, and songs.
+- Phase 6 multi-source content: the registry API, protected proxy, empty-by-default app, YES/USFM/SWORD readers, import format detection, and license confirmation/storage are implemented. Remaining work is the manual install/offline check on real devices.
 
 ## Credits
 
-OpenBible draws on the format, behavior, and documentation of [androidbible (Alkitab)](https://github.com/yukuku/androidbible) by Yuku. The bundled King James Version text is public domain in the United States. Other translations and third-party components remain subject to their own terms, and users are responsible for complying with them.
+OpenBible draws on the format, behavior, and documentation of [androidbible (Alkitab)](https://github.com/yukuku/androidbible) by Yuku. No Bible text is distributed with this repository; translations and third-party components remain subject to their own terms, and users are responsible for complying with them.

@@ -105,3 +105,7 @@ Verse text may start with `@@` and then contain inline markers. The parser store
 - Inline links inside footnote and cross-reference content (for example `@<to:Gen.3.3@>` ... `@/`) are flattened to their inner text: they are not navigable yet, and there is no tap-to-open note dialog.
 
 - Fixtures and offline tests are required before claiming support for real-world YES2 files.
+
+## Status update (2026-11-06)
+
+The parser, `snappy-blocks` decompression, pericope and ARIF readers, and marker formatting described above are implemented and covered by offline tests, including `tests/fixtures/sample.yes` and synthetic YES2 fixtures built in the test projects. The remaining known gap is inline link navigation inside footnote and cross-reference content. Files outside the fixtures are still not part of the automated suite, so the compatibility caveat above applies.

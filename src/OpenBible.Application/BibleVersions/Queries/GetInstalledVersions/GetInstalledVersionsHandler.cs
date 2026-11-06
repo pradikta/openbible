@@ -23,7 +23,10 @@ public sealed class GetInstalledVersionsHandler : IRequestHandler<GetInstalledVe
             v.Title,
             v.Language,
             v.Description,
-            v.Books.Count
+            v.Books.Count,
+            v.Format,
+            v.SourceId,
+            v.License
         )).ToList();
 
         return Result<IReadOnlyList<BibleVersionDto>>.Success(dtos);

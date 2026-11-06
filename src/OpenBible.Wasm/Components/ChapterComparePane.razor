@@ -1,0 +1,42 @@
+﻿<section class="compare-pane">
+    <div class="compare-pane-head">
+        <select class="version-select" aria-label="Comparison translation" value="@VersionId" @onchange="HandleVersionChanged">
+            @foreach (var version in Versions)
+            {
+                <option value="@version.Id">@version.Title (@version.Id.ToUpperInvariant())</option>
+            }
+        </select>
+    </div>
+
+    @if (Chapter is null)
+    {
+        <p class="muted">This translation does not contain @BookName @ChapterNumber.</p>
+    }
+    else
+    {
+        <div class="compare-verses">
+            @foreach (var verse in Chapter.Verses)
+            {
+                <div class="compare-verse">
+                    <span class="compare-verse-num">@verse.VerseNumber</span>
+                    <span class="compare-verse-text">@verse.Text</span>
+                </div>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<BibleVersionDto> Versions { get; set; } = [];
+    [Parameter, EditorRequired] public string VersionId { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> VersionIdChanged { get; set; }
+    [Parameter] public ChapterDto? Chapter { get; set; }
+    [Parameter] public string BookName { get; set; } = string.Empty;
+    [Parameter] public int ChapterNumber { get; set; }
+
+    private Task HandleVersionChanged(ChangeEventArgs e)
+    {
+        var id = e.Value?.ToString();
+        return string.IsNullOrWhiteSpace(id) ? Task.CompletedTask : VersionIdChanged.InvokeAsync(id);
+    }
+}

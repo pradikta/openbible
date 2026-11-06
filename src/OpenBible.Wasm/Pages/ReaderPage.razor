@@ -16,8 +16,11 @@ else if (_emptyLibrary)
 {
     <section class="panel">
         <h1>No Bible yet</h1>
-        <p class="muted">Import a .yes translation, or restart to restore the sample excerpts.</p>
-        <a class="primary-btn" href="import">Import</a>
+        <p class="muted">Add a translation from Library, or import a `.yes` file.</p>
+        <div class="row-actions">
+            <a class="primary-btn" href="library">Library</a>
+            <a class="text-btn" href="import">Import</a>
+        </div>
     </section>
 }
 else
@@ -105,7 +108,7 @@ else
             return;
         }
 
-        var booksResult = await Mediator.Send(new GetBookListQuery());
+        var booksResult = await Mediator.Send(new GetBookListQuery(VersionId));
         _books = booksResult.IsSuccess && booksResult.Value is not null
             ? booksResult.Value
             : [];

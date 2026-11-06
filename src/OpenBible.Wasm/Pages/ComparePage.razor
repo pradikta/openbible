@@ -1,29 +1,65 @@
+﻿@page "/compare/{Book:int}/{Chapter:int}"
 @page "/compare/{Book:int}/{Chapter:int}/{Verse:int}"
 @inject IMediator Mediator
 
 <PageTitle>Compare</PageTitle>
 
-<section class="panel">
-    <h1>Compare @BookCatalogName @Chapter:@Verse</h1>
-    @if (_items is null)
-    {
-        <LoadingSpinner />
-    }
-    else if (_items.Count == 0)
-    {
-        <p class="muted">No installed translation contains this verse.</p>
-    }
-    else
-    {
-        @foreach (var item in _items)
+@if (Verse > 0)
+{
+    <section class="panel">
+        <h1>Compare @BookCatalogName @Chapter:@Verse</h1>
+        <a class="text-btn" href="@($"compare/{Book}/{Chapter}")">Compare whole chapter</a>
+        @if (_items is null)
         {
-            <div class="compare-item">
-                <strong>@item.VersionTitle</strong>
-                <p>@item.Text</p>
+            <LoadingSpinner />
+        }
+        else if (_items.Count == 0)
+        {
+            <p class="muted">No installed translation contains this verse.</p>
+        }
+        else
+        {
+            @foreach (var item in _items)
+            {
+                <div class="compare-item">
+                    <strong>@item.VersionTitle</strong>
+                    <p>@item.Text</p>
+                </div>
+            }
+        }
+    </section>
+}
+else
+{
+    <section class="panel">
+        <h1>Compare @BookCatalogName @Chapter</h1>
+        @if (_versions.Count == 0)
+        {
+            <p class="muted">No translation is installed.</p>
+        }
+        else
+        {
+            @if (_versions.Count == 1)
+            {
+                <p class="muted">Install another translation to compare chapters side by side.</p>
+            }
+            <div class="compare-panes">
+                <ChapterComparePane Versions="_versions"
+                                    VersionId="_leftVersionId"
+                                    VersionIdChanged="OnLeftVersionChanged"
+                                    Chapter="_leftChapter"
+                                    BookName="@BookCatalogName"
+                                    ChapterNumber="Chapter" />
+                <ChapterComparePane Versions="_versions"
+                                    VersionId="_rightVersionId"
+                                    VersionIdChanged="OnRightVersionChanged"
+                                    Chapter="_rightChapter"
+                                    BookName="@BookCatalogName"
+                                    ChapterNumber="Chapter" />
             </div>
         }
-    }
-</section>
+    </section>
+}
 
 @code {
     [Parameter] public int Book { get; set; }
@@ -31,13 +67,98 @@
     [Parameter] public int Verse { get; set; }
 
     private IReadOnlyList<VerseComparisonDto>? _items;
+    private IReadOnlyList<BibleVersionDto> _versions = [];
+    private string _leftVersionId = string.Empty;
+    private string _rightVersionId = string.Empty;
+    private ChapterDto? _leftChapter;
+    private ChapterDto? _rightChapter;
 
     private string BookCatalogName => OpenBible.Domain.Catalog.BibleBookCatalog.Get((BookId)Book).FullName;
 
     protected override async Task OnParametersSetAsync()
     {
-        _items = null;
-        var result = await Mediator.Send(new CompareVerseQuery((BookId)Book, Chapter, Verse));
-        _items = result.IsSuccess ? result.Value! : [];
+        if (Verse > 0)
+        {
+            _items = null;
+            var result = await Mediator.Send(new CompareVerseQuery((BookId)Book, Chapter, Verse));
+            _items = result.IsSuccess ? result.Value! : [];
+            return;
+        }
+
+        await LoadChaptersAsync();
+    }
+
+    private async Task LoadChaptersAsync()
+    {
+        _leftChapter = null;
+        _rightChapter = null;
+
+        var versionsResult = await Mediator.Send(new GetInstalledVersionsQuery());
+        _versions = versionsResult.IsSuccess && versionsResult.Value is not null
+            ? versionsResult.Value
+            : [];
+
+        if (_versions.Count == 0)
+        {
+            return;
+        }
+
+        var preferred = await Mediator.Send(new GetDefaultVersionQuery());
+        var defaultId = preferred.IsSuccess ? preferred.Value : null;
+
+        _leftVersionId = ResolveKnownVersion(_leftVersionId, defaultId);
+        _rightVersionId = ResolveRightVersion();
+
+        _leftChapter = await LoadChapterAsync(_leftVersionId);
+        _rightChapter = await LoadChapterAsync(_rightVersionId);
+    }
+
+    private string ResolveKnownVersion(string current, string? defaultId)
+    {
+        if (_versions.Any(version => version.Id == current))
+        {
+            return current;
+        }
+
+        if (defaultId is not null && _versions.Any(version => version.Id == defaultId))
+        {
+            return defaultId;
+        }
+
+        return _versions[0].Id;
+    }
+
+    private string ResolveRightVersion()
+    {
+        if (_versions.Any(version => version.Id == _rightVersionId))
+        {
+            return _rightVersionId;
+        }
+
+        var other = _versions.FirstOrDefault(version => version.Id != _leftVersionId);
+        return other?.Id ?? _leftVersionId;
+    }
+
+    private async Task OnLeftVersionChanged(string versionId)
+    {
+        _leftVersionId = versionId;
+        _leftChapter = await LoadChapterAsync(versionId);
+    }
+
+    private async Task OnRightVersionChanged(string versionId)
+    {
+        _rightVersionId = versionId;
+        _rightChapter = await LoadChapterAsync(versionId);
+    }
+
+    private async Task<ChapterDto?> LoadChapterAsync(string versionId)
+    {
+        if (string.IsNullOrWhiteSpace(versionId))
+        {
+            return null;
+        }
+
+        var result = await Mediator.Send(new GetChapterQuery(versionId, (BookId)Book, Chapter));
+        return result.IsSuccess ? result.Value : null;
     }
 }

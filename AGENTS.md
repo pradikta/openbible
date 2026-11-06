@@ -46,7 +46,7 @@ When porting logic from [yukuku/androidbible](https://github.com/yukuku/androidb
 | `getFoo()` / `setFoo()` | C# Auto-Properties (`public int Verse { get; init; }`) | Idiomatic C# encapsulation |
 | `ARI` (Alkitab Resource Index) | `VerseReference` Value Object (`Domain/ValueObjects/`) | Encapsulate packing bit shifts inside the VO |
 | `YesReader` / `Yes2Reader` | `YesFileParser` implementing `IYesFileReader` (`Infrastructure`) | Strategy / Open-Closed: modular section readers |
-| `ContentProvider` / SQLite | `IBibleRepository` -> IndexedDB / SQLite WASM | Dependency Inversion: abstract storage behind interface |
+| `ContentProvider` / SQLite | `IBibleRepository` -> IndexedDB-backed repository (memory fallback) | Dependency Inversion: abstract storage behind interface |
 | `SharedPreferences` | `IUserDataRepository` -> LocalStorage / IndexedDB | Abstract reading position, history, bookmarks |
 | Java `DataInputStream` (Big-Endian) | `BinaryReader` + `BinaryPrimitives.ReadInt32BigEndian` | Java binary numbers are always Big-Endian |
 
@@ -62,7 +62,7 @@ The androidbible project packs book, chapter, and verse into a compact 32-bit in
 ### `.yes` (YES2) Binary Format Rules
 1. **Signature**: 8-byte header starting with `0x98, 0x58` magic bytes.
 2. **Transparent Decompression**: If file ends with `.yes.gz` or starts with gzip magic `0x1F, 0x8B`, wrap stream in `System.IO.Compression.GZipStream`.
-3. **Section Architecture**: Headers point to named sections (`version_info`, `book_names`, `verse_text`, `pericope`, `xref`).
+3. **Section Architecture**: Headers point to named sections (`versionInfo`, `booksInfo`, `text`, `pericopes`, `xrefs`, `footnotes`).
 4. **Open-Closed Section Readers**: Implement `IYesSectionReader` for each section type so new sections can be added without modifying the core parser.
 
 ---
@@ -84,9 +84,9 @@ The androidbible project packs book, chapter, and verse into a compact 32-bit in
 └────────────────────────────────────────────────────────┘
 ```
 
-- **`OpenBible.Domain`**: Pure C#. Contains Entities, Value Objects, Enums, Domain Exceptions, Domain Events (`INotification`), and Interface Contracts (`IBibleRepository`, `IYesFileReader`, `ISearchIndex`, `IUserDataRepository`). **Zero dependencies** (except `MediatR.Contracts`).
+- **`OpenBible.Domain`**: Pure C#. Contains Entities, Value Objects, Enums, Domain Exceptions, and Interface Contracts (`IBibleRepository`, `IYesFileReader`, `ISearchIndex`, `IUserDataRepository`). It references `MediatR.Contracts` for planned `INotification` domain events; none are published yet. **Zero other dependencies**.
 - **`OpenBible.Application`**: Use cases orchestrated via MediatR Commands, Queries, Handlers, Pipeline Behaviors (`LoggingBehavior`, `ValidationBehavior`), and DTOs. Depends on `Domain` only.
-- **`OpenBible.Infrastructure`**: `.yes` binary parsing, Snappy/GZip decompression, SQLite WASM / IndexedDB repositories. Depends on `Domain` and `Application`.
+- **`OpenBible.Infrastructure`**: `.yes` binary parsing, Snappy/GZip decompression, and IndexedDB-backed repositories with an in-memory fallback. Depends on `Domain` and `Application`.
 - **`OpenBible.Wasm`**: Blazor WebAssembly PWA host, UI pages, razor components, service worker, CSS safe-area layout. Depends on `Application` (via `IMediator`) and registers `Infrastructure` only in `Program.cs`.
 
 ---
@@ -112,13 +112,14 @@ public sealed class GetChapterHandler(IBibleRepository bibleRepository)
     public async Task<Result<ChapterDto>> Handle(GetChapterQuery request, CancellationToken ct)
     {
         var verses = await bibleRepository
-            .GetVersesAsync(request.VersionId, request.BookId, request.Chapter, ct)
+            .GetChapterVersesAsync(request.VersionId, request.BookId, request.Chapter, ct)
             .ConfigureAwait(false);
 
         if (verses.Count == 0)
             return Result<ChapterDto>.Failure("Chapter not found.");
 
-        return Result<ChapterDto>.Success(new ChapterDto(request.BookId, request.Chapter, verses.Select(v => v.ToDto()).ToList()));
+        var dtos = verses.Select(v => new VerseDto(v.Reference.Verse, v.Text, v.Reference.ToAri())).ToList();
+        return Result<ChapterDto>.Success(new ChapterDto(request.BookId, request.BookId.ToString(), request.Chapter, dtos, []));
     }
 }
 ```
@@ -136,7 +137,7 @@ public sealed class GetChapterHandler(IBibleRepository bibleRepository)
 }
 
 @* ✅ CORRECT: Thin UI component orchestrating via IMediator and DTO *@
-@page "/read/{VersionId}/{BookId:int}/{Chapter:int}"
+@page "/read/{VersionId}/{Book:int}/{Chapter:int}"
 @inject IMediator Mediator
 
 <PageTitle>@_title</PageTitle>
@@ -156,7 +157,7 @@ else
 
 @code {
     [Parameter] public string VersionId { get; set; } = default!;
-    [Parameter] public int BookId { get; set; }
+    [Parameter] public int Book { get; set; }
     [Parameter] public int Chapter { get; set; }
 
     private Result<ChapterDto>? _result;
@@ -166,7 +167,7 @@ else
     protected override async Task OnParametersSetAsync()
     {
         _loading = true;
-        _result = await Mediator.Send(new GetChapterQuery(VersionId, (BookId)BookId, Chapter));
+        _result = await Mediator.Send(new GetChapterQuery(VersionId, (BookId)Book, Chapter));
         _title = _result.IsSuccess ? $"{_result.Value!.BookName} {Chapter}" : "Error";
         _loading = false;
     }
@@ -192,71 +193,22 @@ dotnet build --no-incremental
 # Run all unit and integration tests offline
 dotnet test --no-build --verbosity normal
 
-# Run Blazor WASM local dev server
-dotnet run --project src/OpenBible.Wasm
+# Run the app locally (Wasm host plus catalog API)
+dotnet run --project src/OpenBible.Server
 ```
 
 ---
 
-## 6. Execution Milestones (Step-by-Step Checklist)
+## 6. Execution Milestones
 
-Execute milestones sequentially. Each milestone must pass `dotnet build` and `dotnet test` with zero warnings and zero errors.
+Live progress lives in [PLAN.md](PLAN.md), which is the single source of truth for completed and pending work. The intended build order is:
 
-### Milestone 0: Scaffolding & Solution Baseline
-- [ ] Create `global.json` pinning .NET 10 SDK.
-- [ ] Create `OpenBible.sln` using classic `.sln` format.
-- [ ] Create `Directory.Build.props` (`net10.0`, `Nullable=enable`, `ImplicitUsings=enable`, `TreatWarningsAsErrors=true`).
-- [ ] Create `Directory.Packages.props` for Central Package Management.
-- [ ] Scaffold `src/OpenBible.Domain`, `src/OpenBible.Application`, `src/OpenBible.Infrastructure`, `src/OpenBible.Wasm`.
-- [ ] Scaffold `tests/OpenBible.Domain.Tests`, `tests/OpenBible.Application.Tests`, `tests/OpenBible.Infrastructure.Tests`.
-- [ ] Wire project references adhering strictly to Onion Architecture.
-- [ ] Add `.gitignore` for .NET.
-- [ ] Verify: `dotnet build` executes with zero warnings and zero errors.
+0. Scaffolding and solution baseline.
+1. Domain core and ARI addressing.
+2. Application CQRS use cases.
+3. Infrastructure (`.yes` parser and offline storage).
+4. Blazor WASM PWA presentation.
+5. Polish and release.
+6. Multi-source, multi-format content (proposed in [ADR 0004](docs/adr/0004-multi-source-bible-formats.md)).
 
-### Milestone 1: Domain Core & ARI Addressing
-- [ ] Define `BookId` enum (0 to 65 matching androidbible internal ARI zero-based indexing).
-- [ ] Implement `VerseReference` Value Object with `ToAri()`, `FromAri(int ari)`, equality, and range checks.
-- [ ] Implement `VerseRange` Value Object.
-- [ ] Create POCO entities: `Verse`, `Chapter`, `Book`, `BibleVersion`, `Pericope`, `FootnoteEntry`.
-- [ ] Define interfaces: `IBibleRepository`, `IYesFileReader`, `ISearchIndex`, `IUserDataRepository`.
-- [ ] Define domain exceptions: `YesFileCorruptException`, `VerseNotFoundException`.
-- [ ] Implement unit tests in `OpenBible.Domain.Tests` verifying ARI bit shifts, edge cases, and Value Object equality.
-
-### Milestone 2: Application Layer (MediatR CQRS)
-- [ ] Add `MediatR`, `FluentValidation` to `Directory.Packages.props`.
-- [ ] Implement `Result<T>` and non-generic `Result` monadic types in `Common/Models/`.
-- [ ] Implement `LoggingBehavior` and `ValidationBehavior` pipeline behaviors.
-- [ ] Implement `GetChapterQuery` + Handler.
-- [ ] Implement `GetVerseQuery` + Handler.
-- [ ] Implement `GetInstalledVersionsQuery` + Handler.
-- [ ] Implement `ImportYesFileCommand` + Handler (orchestrating `IYesFileReader` into `IBibleRepository`).
-- [ ] Implement `SearchBibleQuery` + Handler.
-- [ ] Create `DependencyInjection.cs` with `AddApplication(this IServiceCollection)`.
-- [ ] Write isolated unit tests with mocked interfaces (`NSubstitute`) in `OpenBible.Application.Tests`.
-
-### Milestone 3: Infrastructure Layer (YES Parser & Offline Storage)
-- [ ] Document `.yes` specification in `docs/adr/0003-yes-file-format-spec.md`.
-- [ ] Implement `YesFileParser` reading 8-byte header (`0x98, 0x58`) and section directory table.
-- [ ] Implement transparent `.yes.gz` GZip streaming support.
-- [ ] Implement section readers: `MetadataSectionReader`, `VerseTextSectionReader`, `PericopeSectionReader`.
-- [ ] Implement managed WASM-compatible Snappy decompression.
-- [ ] Implement `IndexedDbBibleRepository` (or SQLite WASM) implementing `IBibleRepository`.
-- [ ] Implement `IUserDataRepository` for bookmarks, highlights, and last reading position.
-- [ ] Write integration tests in `OpenBible.Infrastructure.Tests` with sample `.yes` fixture files.
-
-### Milestone 4: Presentation Layer (Blazor WASM iOS PWA)
-- [ ] Configure `Program.cs` composition root: `.AddApplication().AddInfrastructure()`.
-- [ ] Configure `manifest.webmanifest` (`display: standalone`) and Apple meta tags in `index.html`.
-- [ ] Configure `service-worker.js` with offline cache-first strategy.
-- [ ] Build `MainLayout.razor` supporting iOS safe area insets (`env(safe-area-inset-top)`).
-- [ ] Build pages: `ReaderPage.razor`, `LibraryPage.razor`, `ImportPage.razor`, `SearchPage.razor`.
-- [ ] Build components: `ChapterView`, `VerseDisplay`, `BookSelector`, `SearchResultList`.
-- [ ] Implement touch swipe navigation for previous/next chapter.
-- [ ] Verify full offline operation in browser standalone mode.
-
-### Milestone 5: Polish & Release
-- [ ] Implement reading position auto-resume.
-- [ ] Add dark mode support matching system `prefers-color-scheme`.
-- [ ] Profile and optimize `.yes` parser memory footprint for large translations.
-- [ ] Create `README.md` and GitHub Actions CI workflow (`dotnet build` -> `dotnet test`).
-- [ ] Perform full end-to-end test: Import `.yes` -> Navigate -> Search -> Bookmark -> Offline reload.
+Each milestone must pass `dotnet build` and `dotnet test` with zero warnings and zero errors before the next one starts.

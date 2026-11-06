@@ -1,0 +1,13 @@
+{
+  "_note": "Placeholder only. Replace example.org and the catalog with a source you are authorized to use. Keep real hosts and URLs in the gitignored sources.json or *.local.json files.",
+  "Sources": [
+    {
+      "id": "example-sword",
+      "displayName": "Example SWORD source",
+      "format": "sword",
+      "host": "example.org",
+      "catalogKind": "file",
+      "catalogPath": "source-catalogs/example-catalog.example.json"
+    }
+  ]
+}

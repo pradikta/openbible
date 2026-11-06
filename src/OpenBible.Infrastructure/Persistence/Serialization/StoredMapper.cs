@@ -22,7 +22,10 @@ internal static class StoredMapper
                 v.Text,
                 [.. v.Footnotes.Select(f => new StoredNote(f.Index, f.Content))],
                 [.. v.XRefs.Select(x => new StoredNote(x.Index, x.Content))]))],
-            [.. pericopes.Select(p => new StoredPericope(p.Reference.ToAri(), p.Title, [.. p.ParallelPassages]))]);
+            [.. pericopes.Select(p => new StoredPericope(p.Reference.ToAri(), p.Title, [.. p.ParallelPassages]))],
+            version.Format,
+            version.SourceId,
+            version.License);
 
     public static BibleVersion ToVersion(StoredVersion stored) =>
         new(
@@ -30,7 +33,10 @@ internal static class StoredMapper
             stored.Title,
             stored.Language,
             stored.Description,
-            [.. stored.Books.Select(b => new Book((BookId)b.BookId, b.ShortName, b.FullName, b.ChapterCount, b.VerseCounts))]);
+            [.. stored.Books.Select(b => new Book((BookId)b.BookId, b.ShortName, b.FullName, b.ChapterCount, b.VerseCounts))],
+            stored.Format,
+            stored.SourceId,
+            stored.License);
 
     public static List<Verse> ToVerses(StoredVersion stored) =>
         [.. stored.Verses.Select(v =>

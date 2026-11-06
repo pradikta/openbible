@@ -43,6 +43,10 @@
                 {
                     <p>@version.Description</p>
                 }
+                @if (!string.IsNullOrWhiteSpace(version.License))
+                {
+                    <p class="muted">@version.License</p>
+                }
                 <div class="row-actions">
                     <button type="button" class="primary-btn" @onclick="() => OpenVersion(version.Id)">Open</button>
                     @if (version.Id != _defaultVersionId)

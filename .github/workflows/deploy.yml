@@ -21,6 +21,11 @@ env:
   # workflow_run carries the commit CI validated, a manual run uses github.sha.
   REVISION: ${{ github.event.workflow_run.head_sha || github.sha }}
 
+# Runtime source registry configuration is not set here. Set OPENBIBLE_SOURCES__*
+# or OPENBIBLE_SOURCES_FILE in the Portainer stack environment (or mount
+# sources.json); the GitHub environment variables and secrets below are only
+# deployment credentials. See the README "Deploying a source registry" section.
+
 jobs:
   publish:
     name: Publish image to GHCR

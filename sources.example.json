@@ -1,0 +1,29 @@
+{
+  "_note": "Placeholder only. Replace example.org and the catalog paths with a source you are authorized to use. Keep real hosts and URLs in the gitignored sources.json or *.local.json files.",
+  "Sources": [
+    {
+      "id": "yes-example",
+      "displayName": "YES example host",
+      "format": "yes",
+      "host": "example.org",
+      "catalogKind": "file",
+      "catalogPath": "sources/yes-catalog.example.json"
+    },
+    {
+      "id": "usfm-example",
+      "displayName": "USFM example host",
+      "format": "usfm",
+      "host": "example.org",
+      "catalogKind": "live",
+      "catalogPath": "/catalog.json"
+    },
+    {
+      "id": "sword-example",
+      "displayName": "SWORD example host",
+      "format": "sword",
+      "host": "example.org",
+      "catalogKind": "live",
+      "catalogPath": "/catalog.json"
+    }
+  ]
+}

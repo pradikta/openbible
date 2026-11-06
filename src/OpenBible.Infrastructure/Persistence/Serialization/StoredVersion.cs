@@ -1,3 +1,5 @@
+using OpenBible.Domain.Enums;
+
 namespace OpenBible.Infrastructure.Persistence.Serialization;
 
 internal sealed record StoredVersion(
@@ -7,4 +9,7 @@ internal sealed record StoredVersion(
     string Description,
     StoredBook[] Books,
     StoredVerse[] Verses,
-    StoredPericope[] Pericopes);
+    StoredPericope[] Pericopes,
+    BibleFormat Format = BibleFormat.Yes,
+    string? SourceId = null,
+    string? License = null);

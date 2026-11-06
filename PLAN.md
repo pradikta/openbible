@@ -4,7 +4,7 @@
 > Update this checklist incrementally as tasks are started `[/]` and completed `[x]`.  
 > Every milestone must pass `dotnet build` and `dotnet test` with zero warnings and zero errors before proceeding.
 >
-> **Progress snapshot (2026-11-05):** Fresh verification passed: `dotnet build --no-incremental` succeeded with **0 warnings and 0 errors**, and `dotnet test --no-build --verbosity normal` passed all **141 tests**. Phase 0 is complete. Phase 1 is implemented except for optional domain events/exceptions and additional entity-invariant tests. Phase 2 has the core CQRS use cases, with verse lookup, a separate installed-version metadata query, and validation-behavior tests still open. Phase 3 parsing and IndexedDB-backed persistence are implemented and covered by tests. Phase 4 reader, library, import, search, and study pages are implemented; import progress and real-device offline verification remain. Phase 5 CI and data-management controls are implemented; performance profiling/tuning, README screenshots/usage polish, and end-to-end offline verification remain.
+> **Progress snapshot (2026-11-06):** Fresh verification passed: `dotnet build --no-incremental` succeeded with **0 warnings and 0 errors**, and `dotnet test --no-build --verbosity normal` passed all **227 tests**. Phase 0 is complete. Phase 1 is implemented except for optional domain events/exceptions. Phase 2 CQRS use cases are complete. Phase 3 parsing and IndexedDB-backed persistence are implemented and covered by tests. Phase 4 reader, library, import, search, and study pages are implemented, including import progress reporting; real-device offline verification remains. Phase 5 CI, data-management controls, and Release trimming/Brotli are implemented; memory profiling, README screenshots/usage polish, and end-to-end offline verification remain. Phase 6 ships an empty app, a deployment-configured source registry, a protected proxy, the client migration, YES/USFM/SWORD readers, manual-import format detection, and install-time license confirmation/storage; only the manual install/offline check remains.
 
 ---
 
@@ -37,7 +37,7 @@ Phase 6: Multi-source, multi-format content (empty app, registry from deployment
     - [x] Pin `MediatR` (and `MediatR.Contracts`)
     - [x] Pin `FluentValidation`
     - [x] Pin `Microsoft.AspNetCore.Components.WebAssembly`
-    - [x] Pin `xunit`, `NSubstitute`, `FluentAssertions`
+    - [x] Pin `xunit`, `NSubstitute`
     - [x] Snappy: no package needed; managed `SnappyBlockDecoder` is implemented in Infrastructure.
     - [x] Pin IndexedDB interop package (`DnetIndexedDb` is pinned; the store uses JS interop in `wwwroot/interop/openbible-store.js`).
 - [x] **Scaffold Source Projects (`src/`)**
@@ -109,11 +109,11 @@ Phase 6: Multi-source, multi-format content (empty app, registry from deployment
 - [/] **Domain Exceptions & Events**
   - [x] `YesFileCorruptException`, `VerseNotFoundException`.
   - [ ] `VersionAlreadyExistsException`, `BibleVersionImportedEvent`, `ReadingPositionChangedEvent`.
-- [/] **Unit Tests (`OpenBible.Domain.Tests`)**
+- [x] **Unit Tests (`OpenBible.Domain.Tests`)**
   - [x] ARI packing/unpacking roundtrip tests for boundary values (Gen 1:1, Rev 22:21, whole chapter 0x000100).
   - [x] `VerseReference` equality, comparison, and invalid input exceptions.
   - [x] `VerseRange` containment tests.
-  - [ ] Entity invariants and guard clauses.
+  - [x] Entity invariants and guard clauses.
 
 ---
 
@@ -131,14 +131,14 @@ Phase 6: Multi-source, multi-format content (empty app, registry from deployment
   - [x] `BibleVersionDto(string Id, string Title, string Language, string Description, int TotalBooks)`
   - [x] `SearchResultDto(VerseReference Reference, string VersionId, string BookName, int Chapter, int Verse, string Snippet, double Score)`
   - [x] `BookmarkDto`, `HighlightDto`, `ReadingPositionDto`
-- [/] **Use Cases: Bible Reading & Navigation**
+- [x] **Use Cases: Bible Reading & Navigation**
   - [x] `GetChapterQuery` + `GetChapterHandler` + `GetChapterValidator`
-  - [ ] `GetVerseQuery` + `GetVerseHandler`
-  - [/] `GetBookListQuery` + `GetBookListHandler` (book catalog and chapter counts exist; version-specific book data is not implemented)
-- [/] **Use Cases: Version Management & Import**
+  - [x] `GetVerseQuery` + `GetVerseHandler`
+  - [x] `GetBookListQuery` + `GetBookListHandler` (uses installed-version books and chapter counts, falling back to the canonical catalog)
+- [x] **Use Cases: Version Management & Import**
   - [x] `GetInstalledVersionsQuery` + `GetInstalledVersionsHandler`
-  - [ ] `GetVersionMetadataQuery` + `GetVersionMetadataHandler`
-  - [/] `PreviewYesFileQuery` + handler provides import metadata preview; a separate installed-version metadata query is not implemented.
+  - [x] `GetVersionMetadataQuery` + `GetVersionMetadataHandler`
+  - [x] `PreviewYesFileQuery` + handler provides import metadata preview.
   - [x] `ImportYesFileCommand` + `ImportYesFileHandler` (parses and persists imported versions)
   - [x] `DeleteVersionCommand` + `DeleteVersionHandler`
 - [x] **Use Cases: Search**
@@ -152,22 +152,22 @@ Phase 6: Multi-source, multi-format content (empty app, registry from deployment
   - [x] Clear reading position, bookmarks, and highlights.
 - [x] **Dependency Injection Registration**
   - [x] Create `DependencyInjection.cs` with `AddApplication(this IServiceCollection)` registering MediatR, FluentValidation, and Behaviors.
-- [/] **Unit Tests (`OpenBible.Application.Tests`)**
+- [x] **Unit Tests (`OpenBible.Application.Tests`)**
   - [x] Isolated handler tests using `NSubstitute` to mock `IBibleRepository` and `IYesFileReader`.
-  - [ ] Validation behavior tests (invalid query inputs return failure).
+  - [x] Validation behavior tests (invalid query inputs return failure).
 
 ---
 
 ## Phase 3: Infrastructure Layer (YES Parser & Offline Storage)
 
-- [/] **`.yes` Binary Format Architecture**
-- [x] Document specification in `docs/adr/0003-yes-file-format-spec.md` (layouts verified against upstream readers; local parser gaps recorded).
-  - [x] `YesFileConstants`: Full YES2 signature and upstream section names (`versionInfo`, `booksInfo`, `text`, `pericopes`, `xrefs`, `footnotes`).
-  - [x] Implement `BigEndianBinaryReader` wrapping `Stream` with `BinaryPrimitives.Read*BigEndian`.
-- [/] **Section Readers (`Infrastructure/YesFile/Sections/`)**
+- [x] **`.yes` Binary Format Architecture**
+  - [x] Document specification in `docs/adr/0003-yes-file-format-spec.md` (layouts verified against upstream readers; local parser gaps recorded).
+    - [x] `YesFileConstants`: Full YES2 signature and upstream section names (`versionInfo`, `booksInfo`, `text`, `pericopes`, `xrefs`, `footnotes`).
+    - [x] Implement `BigEndianBinaryReader` wrapping `Stream` with `BinaryPrimitives.Read*BigEndian`.
+- [x] **Section Readers (`Infrastructure/YesFile/Sections/`)**
   - [x] `SectionContentStream`: reads section attributes (Bintex map) and exposes section content with offsets relative to the content start.
   - [x] `SectionContentStream`: transparently decompresses `snappy-blocks` payloads for any section that declares compression.
-  - [/] Metadata Bintex parsing for title, language, description, and encoding is in `YesFileParser`; extract to a dedicated metadata reader and complete book ordering separately.
+  - [x] `MetadataSectionReader` reads title, language, description, encoding, and the declared book count from `versionInfo`; `BookNamesSectionReader` owns the ordered `booksInfo` book records.
   - [x] `BookNamesSectionReader`: parses full and short book titles (`abbreviation`/full titles are mapped from `booksInfo` to `Book.ShortName`/`Book.FullName`, replacing internal catalog names where declared).
   - [x] Verse text reader uses book/chapter offsets and VarUInt lengths for both uncompressed and `snappy-blocks` compressed sections.
   - [x] `PericopeSectionReader`: parses data format versions 2 and 3 indexes plus version 4 blocks into `Pericope` entities (title, parallel passages, untitled headings skipped).
@@ -214,7 +214,7 @@ Phase 6: Multi-source, multi-format content (empty app, registry from deployment
   - [x] `MainLayout.razor`: Clean mobile-first app shell.
   - [x] iOS Safe Area Insets: CSS handling for notch and home bar (`padding-top: env(safe-area-inset-top)`).
   - [x] Theme Support: Automatic light/dark mode based on `prefers-color-scheme` with manual override toggle.
-- [/] **Page Implementations**
+- [x] **Page Implementations**
   - [x] **`ReaderPage.razor` (Core Bible Reader)**:
     - [x] Renders current chapter with book title and chapter number.
     - [x] Displays verses with verse numbers, selectable for highlights/bookmarks.
@@ -227,10 +227,10 @@ Phase 6: Multi-source, multi-format content (empty app, registry from deployment
     - [x] Shows active version indicator.
     - [x] Allows switching active version with reader navigation.
     - [x] Version metadata view and delete button.
-  - [/] **`ImportPage.razor` (File Uploader)**:
+  - [x] **`ImportPage.razor` (File Uploader)**:
     - [x] File picker accepts `.yes` and `.yes.gz` files.
     - [x] Pre-parse validation display (Title, Language, Book Count).
-    - [ ] Import progress bar with streaming status.
+    - [x] Import progress bar with streaming status.
   - [x] **`SearchPage.razor` (Full-Text Search)**:
     - [x] Search input with debounced execution.
     - [x] Scope filter (All, Old Testament, New Testament, Current Book).
@@ -251,8 +251,8 @@ Phase 6: Multi-source, multi-format content (empty app, registry from deployment
 - [x] **Reading Position Auto-Resume**
   - [x] Persist current reading position on chapter navigation.
   - [x] Automatically load last-read passage on app startup.
-- [ ] **Memory & Performance Optimization**
-  - [ ] Enable Blazor WASM IL trimming and Brotli compression in Release mode.
+- [x] **Memory & Performance Optimization**
+  - [x] Enable Blazor WASM IL trimming and Brotli compression in Release mode (explicit in `OpenBible.Wasm.csproj`; the Application assembly is rooted so MediatR handlers and validators survive trimming).
   - [ ] Profile memory during large `.yes` file imports (ensure streaming without memory spikes).
 - [x] **Error Boundaries & Resilience**
   - [x] Add Blazor `<ErrorBoundary>` in layout for graceful crash recovery.
@@ -271,10 +271,10 @@ Phase 6: Multi-source, multi-format content (empty app, registry from deployment
 
 ## Implemented features beyond the original milestones and remaining scope
 
-- [/] Per-verse version comparison is implemented; side-by-side chapter panes remain.
+- [x] Per-verse version comparison and side-by-side chapter panes (`/compare/{book}/{chapter}` with two translation selectors).
 - [x] Notes, labels, progress marks, bundled sample reading plans and daily devotions, display settings, share, and go-to-reference are implemented (`/markers`, `/plans`, `/devotion`, `/compare`, `/settings`).
 - [ ] Downloadable reading plans and devotions; only bundled samples are available.
-- [x] Version management: Library lists versions, sets a default (`openbible.settings`), links to Import, and shows the bundled official catalog (251 presets). Install downloads through the `OpenBible.Server` endpoint (`/api/catalog/download/{preset}`), restricted to bundled presets and official hosts, then imports locally. On static hosting, use "Manual download" + Import because catalog hosts do not send CORS headers. The server also serves the WASM files.
+- [x] Version management: Library lists versions, sets a default (`openbible.settings`), links to Import, and browses translations from the deployment-configured source registry. Install downloads through the `OpenBible.Server` proxy (`/api/sources/{source}/download/{translation}`), then imports locally. An empty registry leaves manual import available.
 - [x] Backup/export and restore: More > Backup & restore transfers versioned JSON (positions, bookmarks, highlights, notes, labels, progress marks, plan progress, and default version), with rollback on invalid data (`IBackupService`, `UserDataBackupService`). Installed Bible texts and display settings are excluded.
 - [ ] Sync of user data across devices.
 - [ ] Songs.
@@ -287,46 +287,46 @@ adr> Goal: ship the app **empty**. No embedded translation text, no embedded tra
 >
 > Several items touch **ASK FIRST** areas in `AGENTS.md` (storage schema/contracts, `.yes` parsing structure, ARI). Get approval before implementing those.
 
-- [ ] **Decision & Design**
-  - [ ] Review and accept ADR 0004.
-  - [ ] Decide the versification strategy for non-66-book / differently numbered sources (ARI mapping).
-  - [ ] Decide which hosts to document in `sources.example.json` (one per format); none are active by default.
-- [ ] **Remove embedded content**
-  - [ ] Remove the bundled KJV and `BundledBibleSeeder`.
-  - [ ] Remove the embedded `version_config.json` and `BundledVersionCatalog`.
-  - [ ] Add an onboarding empty state (no translation installed) with links to the source browser and manual import.
-  - [ ] Keep installed data for existing users untouched.
-- [ ] **Source registry (deployment configuration)**
-  - [ ] Add `IBibleSource`, `ISourceCatalog`, and `ISourceRegistry` contracts (Domain).
-  - [ ] Server loads the registry from ASP.NET Core configuration (environment variables or a mounted JSON file); no default registry in the image.
-  - [ ] Expose the registry to the client through a small endpoint (for example `GET /api/sources`); empty registry hides the source browser and leaves manual import.
-  - [ ] Support catalog kinds `live` (query the host) and `file` (operator-supplied catalog, for example the former Yuku `version_config.json`).
-  - [ ] Add `sources.example.json` (documentation only, not loaded by default) and document it in the README, `docker-compose.yml`, and the deploy notes.
-  - [ ] Derive the `OpenBible.Server` download allow-list from the registry and remove the hard-coded host list.
-- [ ] **Proxy security**
-  - [ ] HTTPS only; host must match a registry entry, re-checked after every redirect.
-  - [ ] Reject private, loopback, and link-local addresses (SSRF), including after DNS resolution.
-  - [ ] Enforce maximum download size, timeout, and allowed content types; forward no cookies or credentials.
-  - [ ] Offline tests for each rule (no live HTTP).
-- [ ] **Format abstraction**
-  - [ ] Add `IBibleFormatReader` and a reader selector (declared format, plus file signature for manual import).
-  - [ ] Move the `.yes` parser behind `IBibleFormatReader` with no behavior change; existing tests stay green.
-  - [ ] Store `Format` and `SourceId` with version metadata (snapshot-compatible).
-- [ ] **YES source** (existing format)
-  - [ ] Implement a runtime `ISourceCatalog` for the YES host; no embedded list.
-- [ ] **USFM source**
-  - [ ] USFM reader with offline fixtures and tests.
-  - [ ] Runtime catalog for the USFM host.
-- [ ] **SWORD source**
-  - [ ] SWORD module reader (including `.conf`) with offline fixtures and tests.
-  - [ ] Versification mapping to ARI.
-  - [ ] Runtime catalog for the SWORD host.
-- [ ] **Rights information**
-  - [ ] Show license text per translation before install when the source provides it; say so when it does not.
-  - [ ] Require confirmation before install and store the shown license text with the installed version.
-- [ ] **Documentation**
-  - [ ] Update README (empty-by-default behavior, sources, formats, rights notice) and remove references to the bundled KJV and the 251-preset catalog.
-  - [ ] Update Docker/CI smoke tests that assume a bundled KJV.
+- [x] **Decision & Design**
+  - [x] Review and accept ADR 0004.
+  - [x] Decide the versification strategy for non-66-book / differently numbered sources (ARI mapping: normalize to ARI, skip and report unmapped content).
+  - [x] Decide which hosts to document in `sources.example.json` (placeholders only; none are active by default).
+- [x] **Remove embedded content**
+  - [x] Remove the bundled KJV and `BundledBibleSeeder`.
+  - [x] Remove the embedded `version_config.json` and `BundledVersionCatalog`.
+  - [x] Add an onboarding empty state (no translation installed) with links to the source browser and manual import.
+  - [x] Keep installed data for existing users untouched.
+- [x] **Source registry (deployment configuration)**
+  - [x] Add `IBibleSource`, `ISourceCatalog`, and `ISourceRegistry` contracts (Domain).
+  - [x] Server loads the registry from ASP.NET Core configuration (environment variables or a mounted JSON file); no default registry in the image.
+  - [x] Expose the registry to the client through a small endpoint (`GET /api/sources`); an empty registry leaves manual import.
+  - [x] Support catalog kinds `live` (query the host) and `file` (operator-supplied catalog, for example the former Yuku `version_config.json`).
+  - [x] Add `sources.example.json` (documentation only, not loaded by default) and document it in the README.
+  - [x] Derive the `OpenBible.Server` download allow-list from the registry; the hard-coded host list and legacy endpoint are removed.
+- [x] **Proxy security**
+  - [x] HTTPS only, and the host must match a registry entry; redirects are disabled rather than followed.
+  - [x] Reject private, loopback, and link-local addresses (SSRF), including after DNS resolution.
+  - [x] Enforce maximum download size, timeout, and allowed content types; forward no cookies or credentials.
+  - [x] Offline tests for each rule (no live HTTP).
+- [x] **Format abstraction**
+  - [x] Add `IBibleFormatReader` and a reader selector by declared format plus file-signature detection for manual import.
+  - [x] Move the `.yes` parser behind `IBibleFormatReader` with no behavior change; existing tests stay green.
+  - [x] Store `Format` and `SourceId` with version metadata (snapshot-compatible).
+- [x] **YES source** (existing format)
+  - [x] Implement a runtime `ISourceCatalog` for the YES host; no embedded list.
+- [x] **USFM source**
+  - [x] USFM reader with offline fixtures and tests.
+  - [x] Runtime catalog for the USFM host.
+- [x] **SWORD source**
+  - [x] SWORD module reader (zText/zText4, ZIP compression, `.conf`) with offline fixtures and tests.
+  - [x] Versification mapping to ARI for KJV; other versifications and BZIP2/LZSS/XZ compression are rejected with a clear error.
+  - [x] Runtime catalog for the SWORD host.
+- [x] **Rights information**
+  - [x] Show license text per translation before install when the source provides it; say so when it does not.
+  - [x] Require confirmation before install and store the shown license text with the installed version.
+- [x] **Documentation**
+  - [x] Update README (empty-by-default behavior, sources, formats, rights notice) and remove references to the bundled KJV and the 251-preset catalog.
+  - [x] Update Docker/CI smoke tests that assume a bundled KJV.
 - [ ] **Verification**
-  - [ ] `dotnet build --no-incremental` and `dotnet test` pass with zero warnings; all tests offline.
+  - [x] `dotnet build --no-incremental` and `dotnet test` pass with zero warnings; all tests offline.
   - [ ] Manual check: fresh install is empty, adding a translation from each source works, and offline reading works after install.

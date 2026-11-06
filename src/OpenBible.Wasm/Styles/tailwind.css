@@ -305,6 +305,39 @@
         @apply rounded-2xl;
     }
 
+    /* Side-by-side chapter comparison */
+    .compare-panes {
+        @apply grid grid-cols-2 gap-3;
+    }
+
+    .compare-pane {
+        @apply min-w-0 rounded-2xl border border-line bg-surface p-3;
+    }
+
+    .compare-pane-head {
+        @apply mb-2 pb-2;
+    }
+
+    .compare-pane-head .version-select {
+        @apply max-w-full;
+    }
+
+    .compare-verses {
+        @apply flex flex-col gap-1;
+    }
+
+    .compare-verse {
+        @apply text-[0.85rem] leading-relaxed sm:text-sm;
+    }
+
+    .compare-verse-num {
+        @apply mr-1 align-super text-[0.7rem] font-bold text-muted;
+    }
+
+    .compare-verse-text {
+        @apply text-ink;
+    }
+
     .mark {
         @apply rounded bg-amber-200 px-0.5 text-stone-900;
     }

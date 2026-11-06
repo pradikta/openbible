@@ -42,3 +42,6 @@ coverage/
 *.log
 .playwright-mcp/
 *.new
+.commandcode/
+sources.json
+*.local.json

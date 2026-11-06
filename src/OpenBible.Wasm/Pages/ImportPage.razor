@@ -6,12 +6,24 @@
 
 <section class="panel">
     <h1>Import</h1>
-    <p class="muted">Add a .yes or .yes.gz translation. Parsing and storage stay on this device.</p>
+    <p class="muted">Add a translation file (.yes, .yes.gz, USFM, or a ZIP). Parsing and storage stay on this device.</p>
     <InputFile OnChange="OnFileSelected" class="file-field" />
 
     @if (_busy)
     {
-        <LoadingSpinner />
+        @if (_progress is null || _progress.TotalVerses == 0)
+        {
+            <LoadingSpinner />
+        }
+        else
+        {
+            <div class="import-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@Percent">
+                <p class="muted">@StatusText</p>
+                <div style="height:0.5rem;overflow:hidden;border-radius:9999px;background:var(--ob-border)">
+                    <div style="height:100%;border-radius:9999px;background:var(--ob-accent);width:@(Percent)%;transition:width 0.15s ease"></div>
+                </div>
+            </div>
+        }
     }
     else if (_preview is { IsSuccess: true, Value: not null })
     {
@@ -45,17 +57,60 @@
     private Result<BibleVersionDto>? _preview;
     private string? _importError;
     private bool _busy;
+    private ImportProgress? _progress;
+    private BibleFormat _previewFormat = BibleFormat.Yes;
+    private readonly IProgress<ImportProgress> _importProgress;
+
+    public ImportPage()
+    {
+        _importProgress = new Progress<ImportProgress>(OnProgress);
+    }
+
+    private int Percent => _progress is null ? 0 : (int)Math.Round(_progress.Fraction * 100);
+
+    private string StatusText
+    {
+        get
+        {
+            var progress = _progress;
+            if (progress is null)
+            {
+                return "Importing...";
+            }
+
+            return progress.Stage switch
+            {
+                ImportStage.ReadingMetadata => "Reading file metadata...",
+                ImportStage.SavingVerses => $"Saving verses... {progress.ProcessedVerses:N0} / {progress.TotalVerses:N0}",
+                ImportStage.IndexingVerses => $"Building search index... {progress.ProcessedVerses:N0} / {progress.TotalVerses:N0}",
+                ImportStage.Completed => "Import complete.",
+                _ => "Importing..."
+            };
+        }
+    }
+
+    private void OnProgress(ImportProgress progress)
+    {
+        _progress = progress;
+        _ = InvokeAsync(StateHasChanged);
+    }
 
     private async Task OnFileSelected(InputFileChangeEventArgs args)
     {
         _file = args.File;
         _importError = null;
+        _progress = null;
+        _previewFormat = BibleFormat.Yes;
 
-        // Validasi file extension untuk iOS compatibility
         var fileName = _file.Name.ToLowerInvariant();
-        if (!fileName.EndsWith(".yes") && !fileName.EndsWith(".yes.gz") && !fileName.EndsWith(".gz"))
+        if (!fileName.EndsWith(".yes")
+            && !fileName.EndsWith(".yes.gz")
+            && !fileName.EndsWith(".gz")
+            && !fileName.EndsWith(".usfm")
+            && !fileName.EndsWith(".sfm")
+            && !fileName.EndsWith(".zip"))
         {
-            _importError = "Only .yes, .yes.gz, or .gz files are supported.";
+            _importError = "Only .yes, .yes.gz, .usfm, .sfm, or .zip files are supported.";
             _file = null;
             _preview = null;
             return;
@@ -64,6 +119,11 @@
         _busy = true;
         await using var stream = await OpenSeekableAsync(_file);
         _preview = await Mediator.Send(new PreviewYesFileQuery(stream, _file.Name));
+        if (_preview is { IsSuccess: true, Value: not null })
+        {
+            _previewFormat = _preview.Value.Format;
+        }
+
         _busy = false;
     }
 
@@ -76,9 +136,11 @@
 
         _busy = true;
         _importError = null;
+        _progress = new ImportProgress(ImportStage.ReadingMetadata, 0, 0);
         await using var stream = await OpenSeekableAsync(_file);
-        var result = await Mediator.Send(new ImportYesFileCommand(stream, _file.Name));
+        var result = await Mediator.Send(new ImportYesFileCommand(stream, _file.Name, _importProgress, _previewFormat));
         _busy = false;
+        _progress = null;
 
         if (result.IsSuccess && result.Value is not null)
         {

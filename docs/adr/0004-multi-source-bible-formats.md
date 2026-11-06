@@ -1,6 +1,6 @@
 # ADR 0004: Multi-source, multi-format Bible content with no embedded translations
 
-- Status: Proposed
+- Status: Accepted (2026-11-06)
 - Date: 2026-11-05
 - Related: [ADR 0003](0003-yes-file-format-spec.md), [PLAN.md](../../PLAN.md) Phase 6
 
@@ -76,6 +76,20 @@ Because hosts now come from configuration, the proxy must validate every request
 
 - Define a versification mapping to the ARI layout, and document how unmapped or extra verses are handled (skip with a warning, or store under a separate scheme).
 - Do not change the ARI packing without an explicit decision. This is an **ASK FIRST** area in `AGENTS.md`.
+
+### Recorded decisions (2026-11-06)
+
+- **Versification:** normalize every importer to the 66-book ARI layout. Books or verses that cannot be mapped are skipped and reported; content is not stored under a parallel numbering scheme.
+- **Registry examples:** `sources.example.json` documents one placeholder host per format. No host is active by default.
+- **Migration:** implemented. The bundled KJV, `BundledBibleSeeder`, embedded `version_config.json`, and hard-coded download hosts are removed. The app starts empty, the server exposes a configured source registry, and the client installs from it. Existing installed versions remain in IndexedDB.
+
+## Implementation status (2026-11-06)
+
+- Source registry, `ISourceCatalog`, format reader selector, and SSRF-protected proxy are implemented.
+- YES, USFM, and SWORD readers are implemented with offline tests. USFM packages are a ZIP of `.usfm`/`.sfm` files or a single file, and unmapped book codes are skipped.
+- SWORD supports zText/zText4 modules with ZIP compression and KJV versification. BZIP2, LZSS, XZ, and non-KJV versifications are rejected with a clear error rather than read incorrectly. The reader was verified against a public-domain KJV zText module (66 books, 31,102 verses, Genesis 1:1-3 text correct).
+- Manual import detects YES, USFM, and SWORD ZIP signatures and routes to the declared reader.
+- Install shows the source-provided license (or says it is missing), requires confirmation, and stores the shown text with the installed version.
 
 ## Consequences
 

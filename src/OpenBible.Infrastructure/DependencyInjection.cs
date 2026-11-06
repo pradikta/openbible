@@ -1,9 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenBible.Domain.Interfaces;
-using OpenBible.Infrastructure.Catalog;
 using OpenBible.Infrastructure.Persistence;
 using OpenBible.Infrastructure.Persistence.Storage;
+using OpenBible.Infrastructure.Sources;
+using OpenBible.Infrastructure.Sword;
+using OpenBible.Infrastructure.Usfm;
 using OpenBible.Infrastructure.YesFile;
 
 namespace OpenBible.Infrastructure;
@@ -18,7 +20,13 @@ public static class DependencyInjection
     /// </summary>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
-        services.AddSingleton<IYesFileReader, YesFileParser>();
+        services.AddSingleton<YesFileParser>();
+        services.AddSingleton<IYesFileReader>(sp => sp.GetRequiredService<YesFileParser>());
+        services.AddSingleton<IBibleFormatReader>(sp => sp.GetRequiredService<YesFileParser>());
+        services.AddSingleton<IBibleFormatReader, UsfmFormatReader>();
+        services.AddSingleton<IBibleFormatReader, SwordFormatReader>();
+        services.AddSingleton<IBibleFormatReaderSelector, BibleFormatReaderSelector>();
+        services.AddSingleton<SourceDownloadValidator>();
         services.TryAddSingleton<IPersistentStore, InMemoryPersistentStore>();
 
         services.AddSingleton<InMemoryBibleRepository>();
@@ -36,7 +44,6 @@ public static class DependencyInjection
 
         services.AddSingleton<PersistentAppSettingsRepository>();
         services.AddSingleton<IAppSettingsRepository>(sp => sp.GetRequiredService<PersistentAppSettingsRepository>());
-        services.AddSingleton<IVersionCatalog, BundledVersionCatalog>();
 
         services.AddSingleton<ISearchIndex, SimpleSearchIndex>();
         services.AddSingleton<IBackupService, UserDataBackupService>();

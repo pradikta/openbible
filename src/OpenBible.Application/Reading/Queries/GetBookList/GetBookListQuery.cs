@@ -4,4 +4,4 @@ using OpenBible.Application.Reading.DTOs;
 
 namespace OpenBible.Application.Reading.Queries.GetBookList;
 
-public sealed record GetBookListQuery : IRequest<Result<IReadOnlyList<BookListItemDto>>>;
+public sealed record GetBookListQuery(string? VersionId = null) : IRequest<Result<IReadOnlyList<BookListItemDto>>>;

@@ -1,9 +1,9 @@
-@inject IMediator Mediator
+﻿@inject IMediator Mediator
 
-<h2>Download more versions</h2>
+<h2>Add a translation</h2>
 <p class="muted">
-    The list comes from the official Alkitab catalog and is stored in the app. Install downloads the file and adds it
-    to this device. If Install is unavailable, use Manual download and then <a href="import">Import</a>.
+    Translations come from the source registry configured on this deployment. Install downloads the file through the
+    server and adds it to this device. If no source is configured, import a file from <a href="import">Import</a>.
 </p>
 
 @if (_message is not null)
@@ -11,37 +11,84 @@
     <p class="@(_messageIsError ? "error-text" : "muted")" role="status">@_message</p>
 }
 
-<input class="catalog-search" type="search" placeholder="Search name, language or description"
-       value="@_search" @oninput="OnSearch" aria-label="Search versions" />
-
-@if (_items.Count == 0)
+@if (_sources.Count == 0)
 {
-    <p class="muted">No matching versions.</p>
+    <p class="muted">No source registry is configured on this host. Use <a href="import">Import</a> to add a translation file.</p>
 }
 else
 {
-    <p class="muted">@_items.Count versions</p>
-    @foreach (var item in _items.Take(_visible))
+    @if (_sources.Count > 1)
     {
-        <article class="catalog-item">
-            <div>
-                <strong>@item.LongName</strong>
-                <span class="muted"> · @item.ShortName · @item.Locale</span>
-                <p class="muted">@item.Description</p>
-            </div>
-            <div class="catalog-actions">
-                <button type="button" class="primary-btn" disabled="@(_installing is not null)"
-                        @onclick="() => InstallAsync(item)">
-                    @(_installing == item.PresetName ? "Installing…" : "Install")
+        <div class="tabs">
+            @foreach (var source in _sources)
+            {
+                <button type="button" class="@(source.Id == _sourceId ? "on" : null)"
+                        @onclick="() => SelectSourceAsync(source.Id)">
+                    @source.DisplayName
                 </button>
-                <a class="text-btn" href="@item.DownloadUrl" target="_blank" rel="noopener noreferrer">Manual download</a>
+            }
+        </div>
+    }
+
+    <input class="catalog-search" type="search" placeholder="Search name, language or description"
+           value="@_search" @oninput="OnSearch" aria-label="Search translations" />
+
+    @if (_confirming is not null)
+    {
+        <article class="version-card">
+            <strong>Install @_confirming.DisplayName?</strong>
+            <p class="muted">
+                @(_confirming.License ?? "The source did not provide license text. Confirm that you have the right to use this translation.")
+            </p>
+            <div class="row-actions">
+                <button type="button" class="primary-btn" @onclick="ConfirmInstallAsync">Confirm install</button>
+                <button type="button" class="text-btn" @onclick="CancelInstall">Cancel</button>
             </div>
         </article>
     }
 
-    @if (_items.Count > _visible)
+    @if (_items.Count == 0)
     {
-        <button type="button" class="text-btn" @onclick="() => _visible += PageSize">Show more</button>
+        <p class="muted">No matching translations.</p>
+    }
+    else
+    {
+        <p class="muted">@_items.Count translations</p>
+        @foreach (var item in _items.Take(_visible))
+        {
+            <article class="catalog-item">
+                <div>
+                    <strong>@item.DisplayName</strong>
+                    @if (!string.IsNullOrWhiteSpace(item.Language))
+                    {
+                        <span class="muted"> · @item.Language</span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(item.Description))
+                    {
+                        <p class="muted">@item.Description</p>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(item.License))
+                    {
+                        <p class="muted">@item.License</p>
+                    }
+                    else
+                    {
+                        <p class="muted">License information was not provided by the source.</p>
+                    }
+                </div>
+                <div class="catalog-actions">
+                    <button type="button" class="primary-btn" disabled="@(_installing is not null || _confirming is not null)"
+                            @onclick="() => PromptInstall(item)">
+                        @(_installing == item.Id ? "Installing…" : "Install")
+                    </button>
+                </div>
+            </article>
+        }
+
+        @if (_items.Count > _visible)
+        {
+            <button type="button" class="text-btn" @onclick="() => _visible += PageSize">Show more</button>
+        }
     }
 }
 
@@ -50,35 +97,84 @@ else
 
     [Parameter] public EventCallback OnInstalled { get; set; }
 
-    private IReadOnlyList<CatalogVersionDto> _items = [];
+    private IReadOnlyList<BibleSourceDto> _sources = [];
+    private IReadOnlyList<SourceTranslationDto> _items = [];
+    private string _sourceId = string.Empty;
     private string _search = string.Empty;
     private string? _installing;
+    private SourceTranslationDto? _confirming;
     private string? _message;
     private bool _messageIsError;
     private int _visible = PageSize;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync() => await LoadSourcesAsync();
+
+    private async Task LoadSourcesAsync()
+    {
+        var result = await Mediator.Send(new GetSourcesQuery());
+        _sources = result.IsSuccess && result.Value is not null ? result.Value : [];
+        if (_sources.Count > 0)
+        {
+            _sourceId = _sources[0].Id;
+            await LoadCatalogAsync();
+        }
+    }
+
+    private async Task SelectSourceAsync(string sourceId)
+    {
+        _sourceId = sourceId;
+        _visible = PageSize;
+        await LoadCatalogAsync();
+    }
 
     private async Task OnSearch(ChangeEventArgs e)
     {
         _search = e.Value?.ToString() ?? string.Empty;
         _visible = PageSize;
-        await LoadAsync();
+        await LoadCatalogAsync();
     }
 
-    private async Task LoadAsync()
+    private async Task LoadCatalogAsync()
     {
-        var result = await Mediator.Send(new GetVersionCatalogQuery(_search));
-        _items = result.IsSuccess ? result.Value! : [];
+        if (string.IsNullOrEmpty(_sourceId))
+        {
+            _items = [];
+            return;
+        }
+
+        var result = await Mediator.Send(new GetSourceCatalogQuery(_sourceId, _search));
+        _items = result.IsSuccess && result.Value is not null ? result.Value : [];
     }
 
-    private async Task InstallAsync(CatalogVersionDto item)
+    private void PromptInstall(SourceTranslationDto item) => _confirming = item;
+
+    private void CancelInstall() => _confirming = null;
+
+    private async Task ConfirmInstallAsync()
     {
-        _installing = item.PresetName;
-        SetMessage($"Downloading {item.ShortName}…", false);
+        var item = _confirming;
+        if (item is null)
+        {
+            return;
+        }
+
+        _confirming = null;
+        await InstallAsync(item);
+    }
+
+    private async Task InstallAsync(SourceTranslationDto item)
+    {
+        var source = _sources.FirstOrDefault(candidate => candidate.Id == _sourceId);
+        if (source is null)
+        {
+            return;
+        }
+
+        _installing = item.Id;
+        SetMessage($"Downloading {item.DisplayName}…", false);
         StateHasChanged();
 
-        var result = await Mediator.Send(new DownloadVersionCommand(item.PresetName));
+        var result = await Mediator.Send(new InstallSourceVersionCommand(source.Id, item.Id, source.Format, item.License));
         _installing = null;
         if (!result.IsSuccess)
         {

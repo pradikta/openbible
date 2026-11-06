@@ -5,6 +5,15 @@
     <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <PublishTrimmed>true</PublishTrimmed>
+    <BlazorEnableCompression>true</BlazorEnableCompression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <TrimmerRootAssembly Include="OpenBible.Application" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\OpenBible.Application\OpenBible.Application.csproj" />
     <ProjectReference Include="..\OpenBible.Infrastructure\OpenBible.Infrastructure.csproj" />

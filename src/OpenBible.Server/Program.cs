@@ -1,16 +1,34 @@
 using OpenBible.Domain.Interfaces;
-using OpenBible.Infrastructure.Catalog;
-using OpenBible.Server;
+using OpenBible.Infrastructure.Sources;
+using OpenBible.Server.Sources;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton<IVersionCatalog, BundledVersionCatalog>();
-builder.Services.AddHttpClient(CatalogDownloadEndpoint.ClientName, client => client.Timeout = TimeSpan.FromMinutes(2));
+var sourcesFile = Environment.GetEnvironmentVariable("OPENBIBLE_SOURCES_FILE");
+builder.Configuration.AddJsonFile(
+    string.IsNullOrWhiteSpace(sourcesFile) ? "sources.json" : sourcesFile,
+    optional: true,
+    reloadOnChange: false);
+
+builder.Services.AddSingleton<SourceDownloadValidator>();
+builder.Services.AddSingleton<ISourceRegistry>(sp => new SourceRegistry(
+    builder.Configuration.GetSection("Sources").Get<List<SourceOptions>>() ?? [],
+    sp.GetRequiredService<ILogger<SourceRegistry>>()));
+builder.Services.AddSingleton<ISourceCatalog, SourceCatalogService>();
+
+builder.Services.AddHttpClient(SourceCatalogService.ClientName, client => client.Timeout = TimeSpan.FromSeconds(30));
+builder.Services
+    .AddHttpClient(SourceEndpoints.DownloadClientName, client => client.Timeout = Timeout.InfiniteTimeSpan)
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+    {
+        AllowAutoRedirect = false,
+        UseCookies = false
+    });
 
 var app = builder.Build();
 
 app.MapStaticAssets();
-app.MapCatalogDownload();
+app.MapSourceEndpoints();
 
 // Lets the deploy workflow confirm which build is actually serving traffic.
 app.MapGet("/version.json", () => Results.Json(new
