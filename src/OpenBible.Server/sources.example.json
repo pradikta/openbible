@@ -1,5 +1,5 @@
 {
-  "_note": "Placeholder only. Replace files.example.org and the catalog files with a source you are authorized to use. Do not commit real hosts or full download URLs unless the translation's license permits it. catalogFormat is catalog-json here; live catalog formats are catalog-json, alkitab-version-config, ebible-html, and crosswire-bibles-html.",
+  "_note": "Placeholder URLs only. Replace example.org with a catalog/file host you are authorized to use. Do not commit real hosts or full URLs unless the translation's license permits it. catalogFormat values: catalog-json, alkitab-version-config, ebible-html, crosswire-bibles-html. The source-catalogs/*.example.json files show the file-catalog shape.",
   "Sources": [
     {
       "id": "yes-example",
@@ -7,11 +7,12 @@
       "format": "yes",
       "host": "files.example.org",
       "downloadHost": "files.example.org",
-      "catalogKind": "file",
-      "catalogPath": "source-catalogs/yes-catalog.example.json",
+      "catalogKind": "live",
+      "catalogUrl": "https://catalog.example.org/yes.json",
       "catalogFormat": "catalog-json",
-      "refreshMinutes": 0,
-      "cacheMinutes": 60
+      "downloadUrlFormat": "https://files.example.org/$TRANSLATION_ID.yes",
+      "refreshMinutes": 360,
+      "cacheMinutes": 360
     },
     {
       "id": "usfm-example",
@@ -19,11 +20,12 @@
       "format": "usfm",
       "host": "files.example.org",
       "downloadHost": "files.example.org",
-      "catalogKind": "file",
-      "catalogPath": "source-catalogs/usfm-catalog.example.json",
+      "catalogKind": "live",
+      "catalogUrl": "https://catalog.example.org/usfm.json",
       "catalogFormat": "catalog-json",
-      "refreshMinutes": 0,
-      "cacheMinutes": 60
+      "downloadUrlFormat": "https://files.example.org/$TRANSLATION_ID_usfm.zip",
+      "refreshMinutes": 360,
+      "cacheMinutes": 360
     },
     {
       "id": "sword-example",
@@ -31,11 +33,12 @@
       "format": "sword",
       "host": "files.example.org",
       "downloadHost": "files.example.org",
-      "catalogKind": "file",
-      "catalogPath": "source-catalogs/sword-catalog.example.json",
+      "catalogKind": "live",
+      "catalogUrl": "https://catalog.example.org/sword.json",
       "catalogFormat": "catalog-json",
-      "refreshMinutes": 0,
-      "cacheMinutes": 60
+      "downloadUrlFormat": "https://files.example.org/$TRANSLATION_ID.zip",
+      "refreshMinutes": 360,
+      "cacheMinutes": 360
     }
   ]
 }

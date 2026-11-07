@@ -133,7 +133,7 @@ The Docker image includes the server. On a static host without this API, use man
 
 ### Source registry (optional)
 
-`OpenBible.Server` can expose a deployment-configured source registry for multi-format installs. Configure it with the `Sources` array (environment variables such as `OPENBIBLE_SOURCES__0__ID`, or a mounted JSON file named by `OPENBIBLE_SOURCES_FILE`). `src/OpenBible.Server/sources.example.json` and the `src/OpenBible.Server/source-catalogs/*.example.json` files are documentation only and are not loaded by default. The committed example includes one file-catalog source per format (YES, USFM, and SWORD).
+`OpenBible.Server` can expose a deployment-configured source registry for multi-format installs. Configure it with the `Sources` array (environment variables such as `OPENBIBLE_SOURCES__0__ID`, or a mounted JSON file named by `OPENBIBLE_SOURCES_FILE`). `src/OpenBible.Server/sources.example.json` and the `src/OpenBible.Server/source-catalogs/*.example.json` files are documentation only and are not loaded by default. The committed example shows placeholder `catalogUrl`/`downloadUrlFormat` values for YES, USFM, and SWORD; the catalog files show the `file`-catalog shape.
 
 - `GET /api/sources` lists configured sources; it is empty by default.
 - `GET /api/sources/{sourceId}/catalog` lists translations from a `live` or `file` catalog.
