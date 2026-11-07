@@ -45,3 +45,4 @@ coverage/
 .commandcode/
 sources.json
 *.local.json
+catalog-cache/

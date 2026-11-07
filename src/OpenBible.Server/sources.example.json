@@ -1,13 +1,28 @@
 {
-  "_note": "Placeholder only. Replace example.org and the catalog with a source you are authorized to use. Keep real hosts and URLs in the gitignored sources.json or *.local.json files.",
+  "_note": "Placeholder only. Replace example.org and the catalog with a source you are authorized to use. Keep real hosts and URLs in the gitignored sources.json or *.local.json files. catalogFormat can be catalog-json, alkitab-version-config, ebible-html, or crosswire-bibles-html.",
   "Sources": [
     {
-      "id": "example-sword",
-      "displayName": "Example SWORD source",
+      "id": "example-live",
+      "displayName": "Example live source",
+      "format": "yes",
+      "host": "files.example.org",
+      "downloadHost": "files.example.org",
+      "catalogKind": "live",
+      "catalogUrl": "https://catalog.example.org/yes.json",
+      "catalogFormat": "catalog-json",
+      "downloadUrlFormat": "https://files.example.org/$TRANSLATION_ID.yes",
+      "refreshMinutes": 360,
+      "cacheMinutes": 360
+    },
+    {
+      "id": "example-file",
+      "displayName": "Example file source",
       "format": "sword",
-      "host": "example.org",
+      "host": "files.example.org",
+      "downloadHost": "files.example.org",
       "catalogKind": "file",
-      "catalogPath": "source-catalogs/example-catalog.example.json"
+      "catalogPath": "source-catalogs/example-catalog.example.json",
+      "catalogFormat": "catalog-json"
     }
   ]
 }

@@ -8,4 +8,10 @@ public sealed record BibleSource(
     BibleFormat Format,
     string Host,
     SourceCatalogKind CatalogKind,
-    string? CatalogPath = null) : IBibleSource;
+    string? CatalogPath = null,
+    string? CatalogUrl = null,
+    string? CatalogFormat = null,
+    string? DownloadHost = null,
+    string? DownloadUrlFormat = null,
+    int RefreshMinutes = 0,
+    int CacheMinutes = 60) : IBibleSource;

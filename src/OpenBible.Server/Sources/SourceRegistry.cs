@@ -37,7 +37,13 @@ public sealed class SourceRegistry : ISourceRegistry
                 format,
                 option.Host,
                 kind,
-                option.CatalogPath));
+                option.CatalogPath,
+                option.CatalogUrl,
+                option.CatalogFormat,
+                option.DownloadHost,
+                option.DownloadUrlFormat,
+                Math.Max(0, option.RefreshMinutes),
+                Math.Max(1, option.CacheMinutes)));
         }
 
         _sources = sources;

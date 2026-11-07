@@ -4,17 +4,28 @@ using OpenBible.Server.Sources;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Adds OPENBIBLE_SOURCES__0__ID, OPENBIBLE_CATALOGCACHE__DIRECTORY, etc.
+builder.Configuration.AddEnvironmentVariables(prefix: "OPENBIBLE_");
+
 var sourcesFile = Environment.GetEnvironmentVariable("OPENBIBLE_SOURCES_FILE");
 builder.Configuration.AddJsonFile(
     string.IsNullOrWhiteSpace(sourcesFile) ? "sources.json" : sourcesFile,
     optional: true,
     reloadOnChange: false);
 
+var cacheDirectory = Environment.GetEnvironmentVariable("OPENBIBLE_CATALOG_CACHE");
+if (!string.IsNullOrWhiteSpace(cacheDirectory))
+{
+    builder.Configuration["CatalogCache:Directory"] = cacheDirectory;
+}
+
 builder.Services.AddSingleton<SourceDownloadValidator>();
 builder.Services.AddSingleton<ISourceRegistry>(sp => new SourceRegistry(
     builder.Configuration.GetSection("Sources").Get<List<SourceOptions>>() ?? [],
     sp.GetRequiredService<ILogger<SourceRegistry>>()));
-builder.Services.AddSingleton<ISourceCatalog, SourceCatalogService>();
+builder.Services.AddSingleton<SourceCatalogService>();
+builder.Services.AddSingleton<ISourceCatalog>(sp => sp.GetRequiredService<SourceCatalogService>());
+builder.Services.AddHostedService<CatalogRefreshService>();
 
 builder.Services
     .AddHttpClient(SourceCatalogService.ClientName, client => client.Timeout = TimeSpan.FromSeconds(30))
