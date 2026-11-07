@@ -137,6 +137,8 @@ The Docker image includes the server. On a static host without this API, use man
 - `GET /api/sources/{sourceId}/catalog` lists translations from a `live` or `file` catalog.
 - `GET /api/sources/{sourceId}/download/{translationId}` proxies a download after HTTPS host checks, DNS/SSRF checks, size and content-type limits, with cookies and credentials disabled.
 
+Redirects are disabled rather than followed, so each catalog entry must point at the final HTTPS file URL on the registered host. If a source redirects to a different host, register that final host and use its direct URL.
+
 The app installs from the registry when it is configured; an empty registry leaves manual import as the only path.
 
 #### Deploying a source registry
