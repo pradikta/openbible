@@ -33,7 +33,11 @@ public sealed class CatalogRefreshService(
                     lastRefresh[source.Id] = DateTimeOffset.UtcNow;
                     logger.LogInformation("Refreshed the catalog for {SourceId}.", source.Id);
                 }
-                catch (Exception ex) when (ex is not OperationCanceledException)
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
                 {
                     logger.LogWarning(ex, "Could not refresh the catalog for {SourceId}.", source.Id);
                 }

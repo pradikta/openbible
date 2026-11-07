@@ -29,7 +29,7 @@ builder.Services.AddSingleton<ISourceCatalog>(sp => sp.GetRequiredService<Source
 builder.Services.AddHostedService<CatalogRefreshService>();
 
 builder.Services
-    .AddHttpClient(SourceCatalogService.ClientName, client => client.Timeout = TimeSpan.FromSeconds(30))
+    .AddHttpClient(SourceCatalogService.ClientName, client => client.Timeout = TimeSpan.FromSeconds(60))
     .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
     {
         AllowAutoRedirect = false,
