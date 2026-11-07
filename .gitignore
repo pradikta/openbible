@@ -39,6 +39,7 @@ coverage/
 
 ## Local-only files
 .env
+appsettings.Development.json
 *.log
 .playwright-mcp/
 *.new
