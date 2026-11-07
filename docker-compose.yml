@@ -6,11 +6,14 @@ services:
       dockerfile: Dockerfile
     ports:
       - "${OPENBIBLE_PORT:-8080}:8080"
-    # Optional: enable a deployment-configured source registry.
+    # Optional: enable a deployment-configured source registry and catalog cache.
     # environment:
     #   OPENBIBLE_SOURCES_FILE: /config/sources.json
+    #   OPENBIBLE_CATALOG_CACHE: /data/catalog-cache
+    #   OPENBIBLE_ADMIN_TOKEN: change-me
     # volumes:
     #   - ./sources.json:/config/sources.json:ro
+    #   - ./catalog-cache:/data/catalog-cache
     restart: unless-stopped
     healthcheck:
       # The runtime image ships no curl; bash's /dev/tcp is enough for a plain HTTP probe.

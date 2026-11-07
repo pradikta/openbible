@@ -84,10 +84,13 @@ The androidbible project packs book, chapter, and verse into a compact 32-bit in
 └────────────────────────────────────────────────────────┘
 ```
 
-- **`OpenBible.Domain`**: Pure C#. Contains Entities, Value Objects, Enums, Domain Exceptions, and Interface Contracts (`IBibleRepository`, `IYesFileReader`, `ISearchIndex`, `IUserDataRepository`). It references `MediatR.Contracts` for planned `INotification` domain events; none are published yet. **Zero other dependencies**.
+`OpenBible.Server` is a separate host that composes Application and Infrastructure for the source registry, catalog cache, download proxy, and admin page.
+
+- **`OpenBible.Domain`**: Pure C#. Contains Entities, Value Objects, Enums, Domain Exceptions, and Interface Contracts (`IBibleRepository`, `IYesFileReader`, `IBibleFormatReader`, `ISearchIndex`, `IUserDataRepository`, `IBibleSource`, `ISourceCatalog`, `ISourceRegistry`, `ISourceDirectory`). It references `MediatR.Contracts` for planned `INotification` domain events; none are published yet. **Zero other dependencies**.
 - **`OpenBible.Application`**: Use cases orchestrated via MediatR Commands, Queries, Handlers, Pipeline Behaviors (`LoggingBehavior`, `ValidationBehavior`), and DTOs. Depends on `Domain` only.
-- **`OpenBible.Infrastructure`**: `.yes` binary parsing, Snappy/GZip decompression, and IndexedDB-backed repositories with an in-memory fallback. Depends on `Domain` and `Application`.
+- **`OpenBible.Infrastructure`**: `.yes` binary parsing, Snappy/GZip decompression, USFM/SWORD readers, source catalog adapters, download validation, and IndexedDB-backed repositories with an in-memory fallback. Depends on `Domain` and `Application`.
 - **`OpenBible.Wasm`**: Blazor WebAssembly PWA host, UI pages, razor components, service worker, CSS safe-area layout. Depends on `Application` (via `IMediator`) and registers `Infrastructure` only in `Program.cs`.
+- **`OpenBible.Server`**: ASP.NET Core host, source registry, live catalog cache, SSRF-protected download proxy, and token-protected `/admin` page/API. Depends on `Application` and `Infrastructure`.
 
 ---
 

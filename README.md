@@ -133,7 +133,7 @@ The Docker image includes the server. On a static host without this API, use man
 
 ### Source registry (optional)
 
-`OpenBible.Server` can expose a deployment-configured source registry for multi-format installs. Configure it with the `Sources` array (environment variables such as `OPENBIBLE_SOURCES__0__ID`, or a mounted JSON file named by `OPENBIBLE_SOURCES_FILE`). `sources.example.json` and `sources/yes-catalog.example.json` are documentation only and are not loaded by default.
+`OpenBible.Server` can expose a deployment-configured source registry for multi-format installs. Configure it with the `Sources` array (environment variables such as `OPENBIBLE_SOURCES__0__ID`, or a mounted JSON file named by `OPENBIBLE_SOURCES_FILE`). `src/OpenBible.Server/sources.example.json` and `src/OpenBible.Server/source-catalogs/example-catalog.example.json` are documentation only and are not loaded by default.
 
 - `GET /api/sources` lists configured sources; it is empty by default.
 - `GET /api/sources/{sourceId}/catalog` lists translations from a `live` or `file` catalog.
@@ -158,15 +158,17 @@ OPENBIBLE_SOURCES__0__CATALOGKIND=file
 OPENBIBLE_SOURCES__0__CATALOGPATH=/config/yes-catalog.json
 ```
 
-**Mounted JSON file** (same shape as `sources.example.json`, with a top-level `Sources` array):
+**Mounted JSON file** (same shape as `src/OpenBible.Server/sources.example.json`, with a top-level `Sources` array):
 
 ```yaml
 services:
   openbible:
     environment:
       OPENBIBLE_SOURCES_FILE: /config/sources.json
+      OPENBIBLE_CATALOG_CACHE: /data/catalog-cache
     volumes:
       - ./sources.json:/config/sources.json:ro
+      - ./catalog-cache:/data/catalog-cache
 ```
 
 The file is optional; if the path is unset or the file is absent, the registry is empty. Without `OPENBIBLE_SOURCES_FILE`, the server also loads `sources.json` from its content root automatically. The checked-in `src/OpenBible.Server/sources.example.json` is a copyable template; `sources.json` and `*.local.json` are ignored by git.
@@ -263,8 +265,12 @@ flowchart TB
     end
     subgraph Infra["OpenBible.Infrastructure"]
         YES["YesFileParser + section readers<br/>GZip detection, Snappy"]
+        SRC["USFM/SWORD readers, source catalog adapters,<br/>download validation"]
         REPO["Persistent repositories<br/>(Bible, user data, study data, settings)"]
         IDX["SimpleSearchIndex<br/>(rebuilt at startup)"]
+    end
+    subgraph Server["OpenBible.Server"]
+        SRV["Source registry, catalog cache,<br/>download proxy, /admin"]
     end
     subgraph App["OpenBible.Application"]
         UC["Commands, Queries, Handlers"]
@@ -273,7 +279,7 @@ flowchart TB
     end
     subgraph Dom["OpenBible.Domain"]
         ENT["Entities and Value Objects<br/>VerseReference (ARI), VerseRange"]
-        IFC["Contracts: IBibleRepository, IYesFileReader,<br/>ISearchIndex, IUserDataRepository"]
+        IFC["Contracts: IBibleRepository, IYesFileReader,<br/>ISearchIndex, IUserDataRepository,<br/>IBibleSource, ISourceCatalog, ISourceRegistry"]
     end
     STORE[("Browser IndexedDB<br/>memory fallback")]
 
@@ -282,6 +288,8 @@ flowchart TB
     UC --> ENT
     Infra -. implements .-> IFC
     Wasm -. registers in Program.cs .-> Infra
+    Server --> App
+    Server --> Infra
     Infra --> App
     REPO --> STORE
 ```
@@ -290,9 +298,9 @@ flowchart TB
 |---|---|
 | `OpenBible.Domain` | Entities, value objects, and repository/service contracts. |
 | `OpenBible.Application` | MediatR use cases, validation/logging behaviors, DTOs, and result types. |
-| `OpenBible.Infrastructure` | `.yes` parsing, search, local repositories, bundled content, and persistence. |
+| `OpenBible.Infrastructure` | `.yes` parsing, USFM/SWORD readers, source catalog adapters, download validation, search, local repositories, bundled content, and persistence. |
 | `OpenBible.Wasm` | Blazor pages/components, PWA assets, JavaScript interop, and composition root. |
-| `OpenBible.Server` | Web host and allow-listed catalog download endpoint. |
+| `OpenBible.Server` | Web host, source registry, catalog cache, SSRF-protected download proxy, and token-protected `/admin` page/API. |
 
 Rules enforced by convention (details in [AGENTS.md](AGENTS.md)):
 
@@ -535,9 +543,9 @@ global.json                  .NET SDK pin
 src/
   OpenBible.Domain/          entities, value objects, contracts
   OpenBible.Application/     use cases, behaviors, DTOs, Result
-  OpenBible.Infrastructure/  YesFile parser, source proxy helpers, repositories, search, and bundled reading content
+  OpenBible.Infrastructure/  Yes/USFM/SWORD readers, source catalog adapters, repositories, search, bundled reading content
   OpenBible.Wasm/            Blazor WASM host (Pages, Components, Layout, wwwroot)
-  OpenBible.Server/          ASP.NET Core host and source registry/download API
+  OpenBible.Server/          ASP.NET Core host, source registry/catalog cache/admin, download API
 tests/
   OpenBible.Domain.Tests/
   OpenBible.Application.Tests/
@@ -601,7 +609,7 @@ The [CI workflow](.github/workflows/ci.yml) (named `CI`) only verifies. It runs 
 
 ### Docker deployment
 
-One image serves the PWA and the source API (`OpenBible.Server`) on port `8080`. No Bible text is bundled; add a translation from Library (when a source is configured) or import a file.
+One image serves the PWA and the source API (`OpenBible.Server`) on port `8080`. No Bible text is bundled; add a translation from Library (when a source is configured) or import a file. The catalog admin page is at `/admin`; set `OPENBIBLE_ADMIN_TOKEN` to protect it. When using live catalogs, mount a writable cache directory or set `OPENBIBLE_CATALOG_CACHE=/data/catalog-cache`.
 
 ```powershell
 docker compose up --build        # http://localhost:8080 (set OPENBIBLE_PORT to change)

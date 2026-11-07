@@ -17,7 +17,7 @@ This couples the app to one catalog and one format, and it puts the project in t
 ## Decision
 
 1. **Embed no translations, no translation lists, and no hosts.** The app and Docker image ship without Bible text, without any per-translation catalog, and without a default source registry (the bundled KJV and the embedded `version_config.json` are removed).
-2. **The source registry lives in deployment configuration.** The operator supplies a short list of hosts; each entry represents one format and one way to browse or fetch content. It contains no translation metadata. The repository only contains `sources.example.json` as documentation, and it is not loaded by default.
+2. **The source registry lives in deployment configuration.** The operator supplies a short list of hosts; each entry represents one format and one way to browse or fetch content. It contains no translation metadata. The repository only contains `src/OpenBible.Server/sources.example.json` as documentation, and it is not loaded by default.
 3. **Read content through format-neutral abstractions.** Every format is normalized into the existing Domain model (`BibleVersion`, `Book`, `Verse`, `Pericope`, `FootnoteEntry`) before reaching `IBibleRepository`. UI, search, and study features stay format-agnostic.
 4. **Show rights information before installing,** where the source provides it, and require the user to confirm. Record what was shown with the installed version.
 5. **Keep the server a narrow proxy,** limited to registry hosts, with no format or catalog logic beyond validation and size limits.
@@ -36,17 +36,31 @@ Application handlers (`ImportVersionHandler`, `GetSourcesQuery`, `GetSourceCatal
 
 ## Source registry (deployment configuration)
 
-The registry is read by `OpenBible.Server` from standard ASP.NET Core configuration: `appsettings.json`, environment variables (for example `OPENBIBLE_SOURCES__0__ID`), or a mounted JSON file whose path is set by an environment variable. The WASM client gets the list from a small endpoint (for example `GET /api/sources`) instead of an embedded file. Example shape (`sources.example.json`, not active by default):
+The registry is read by `OpenBible.Server` from standard ASP.NET Core configuration: `appsettings.json`, environment variables (for example `OPENBIBLE_SOURCES__0__ID`), or a mounted JSON file whose path is set by an environment variable. The WASM client gets the list from a small endpoint (for example `GET /api/sources`) instead of an embedded file. Example shape (`src/OpenBible.Server/sources.example.json`, not active by default):
 
 ```json
-[
-  { "id": "yes-example",   "format": "yes",   "host": "<host>", "catalog": { "kind": "file", "path": "/config/yes-catalog.json" } },
-  { "id": "sword-example", "format": "sword", "host": "<host>", "catalog": { "kind": "live" } },
-  { "id": "usfm-example",  "format": "usfm",  "host": "<host>", "catalog": { "kind": "live" } }
-]
+{
+  "Sources": [
+    {
+      "id": "yes-example",
+      "displayName": "YES example",
+      "format": "yes",
+      "host": "files.example.org",
+      "downloadHost": "files.example.org",
+      "catalogKind": "file",
+      "catalogPath": "/config/yes-catalog.json",
+      "catalogFormat": "catalog-json",
+      "downloadUrlFormat": "https://files.example.org/$TRANSLATION_ID.yes",
+      "refreshMinutes": 360,
+      "cacheMinutes": 360
+    }
+  ]
+}
 ```
 
 - **Catalog kinds:** `live` queries the host at runtime. `file` reads a catalog supplied by the operator and mounted next to the registry. This is where the former embedded Yuku `version_config.json` goes: it is no longer in the repository, and an operator who wants it provides it as a `file` catalog and accepts responsibility for its content.
+- **Catalog formats:** `catalog-json` (default), `alkitab-version-config`, `ebible-html`, and `crosswire-bibles-html`. `downloadHost` and `downloadUrlFormat` build the final download URLs when the upstream list does not include them.
+- **Cache:** live catalogs are cached in memory and in `catalog-cache/{sourceId}.json`; `refreshMinutes` schedules a background refresh, and `cacheMinutes` controls the TTL. A failed refresh keeps the stale cache.
 - The 66-book list (`BibleBookCatalog`) is part of the ARI model and stays in the Domain layer. It is not a translation list.
 - Registry entries change without a release or an image rebuild (environment variables or a mounted file in Docker Compose and Portainer).
 - The server download allow-list is derived from the registry. The hard-coded host list is removed in the same milestone so there is one source of truth.
@@ -58,8 +72,8 @@ The registry is read by `OpenBible.Server` from standard ASP.NET Core configurat
 Because hosts now come from configuration, the proxy must validate every request:
 
 - HTTPS only, and the host must match a registry entry.
-- Reject private, loopback, and link-local addresses (SSRF), including after DNS resolution and after each redirect.
-- Re-check the host of every redirect target against the registry.
+- Reject private, loopback, and link-local addresses (SSRF), including after DNS resolution.
+- Do not follow redirects; catalog and download URLs must be final URLs on the registered host.
 - Enforce maximum download size, response time, and allowed content types.
 - Do not forward cookies or credentials to sources.
 
@@ -80,10 +94,10 @@ Because hosts now come from configuration, the proxy must validate every request
 ### Recorded decisions (2026-11-06)
 
 - **Versification:** normalize every importer to the 66-book ARI layout. Books or verses that cannot be mapped are skipped and reported; content is not stored under a parallel numbering scheme.
-- **Registry examples:** `sources.example.json` documents one placeholder host per format. No host is active by default.
+- **Registry examples:** `src/OpenBible.Server/sources.example.json` uses placeholder hosts only; no host is active by default.
 - **Migration:** implemented. The bundled KJV, `BundledBibleSeeder`, embedded `version_config.json`, and hard-coded download hosts are removed. The app starts empty, the server exposes a configured source registry, and the client installs from it. Existing installed versions remain in IndexedDB.
 
-## Implementation status (2026-11-06)
+## Implementation status (2026-11-07)
 
 - Source registry, `ISourceCatalog`, format reader selector, and SSRF-protected proxy are implemented.
 - YES, USFM, and SWORD readers are implemented with offline tests. USFM packages are a ZIP of `.usfm`/`.sfm` files or a single file, and unmapped book codes are skipped.

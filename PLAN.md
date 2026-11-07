@@ -4,7 +4,7 @@
 > Update this checklist incrementally as tasks are started `[/]` and completed `[x]`.  
 > Every milestone must pass `dotnet build` and `dotnet test` with zero warnings and zero errors before proceeding.
 >
-> **Progress snapshot (2026-11-06):** Fresh verification passed: `dotnet build --no-incremental` succeeded with **0 warnings and 0 errors**, and `dotnet test --no-build --verbosity normal` passed all **232 tests**. Phase 0 is complete. Phase 1 is implemented except for optional domain events/exceptions. Phase 2 CQRS use cases are complete. Phase 3 parsing and IndexedDB-backed persistence are implemented and covered by tests. Phase 4 reader, library, import, search, and study pages are implemented, including import progress reporting; real-device offline verification remains. Phase 5 CI, data-management controls, and Release trimming/Brotli are implemented; memory profiling, README screenshots/usage polish, and end-to-end offline verification remain. Phase 6 ships an empty app, a deployment-configured source registry with live catalog caching/refresh, a protected proxy, the client migration, YES/USFM/SWORD readers, manual-import format detection, and install-time license confirmation/storage; only the manual install/offline check remains.
+> **Progress snapshot (2026-11-07):** Fresh verification passed: `dotnet build --no-incremental` succeeded with **0 warnings and 0 errors**, and `dotnet test --no-build --verbosity normal` passed all **232 tests**. Phase 0 is complete. Phase 1 is implemented except for optional domain events/exceptions. Phase 2 CQRS use cases are complete. Phase 3 parsing and IndexedDB-backed persistence are implemented and covered by tests. Phase 4 reader, library, import, search, and study pages are implemented, including import progress reporting; real-device offline verification remains. Phase 5 CI, data-management controls, and Release trimming/Brotli are implemented; memory profiling, README screenshots/usage polish, and end-to-end offline verification remain. Phase 6 ships an empty app, a deployment-configured source registry with live catalog caching/refresh, a protected proxy, the client migration, YES/USFM/SWORD readers, manual-import format detection, and install-time license confirmation/storage; only the manual install/offline check remains.
 
 ---
 
@@ -290,7 +290,7 @@ adr> Goal: ship the app **empty**. No embedded translation text, no embedded tra
 - [x] **Decision & Design**
   - [x] Review and accept ADR 0004.
   - [x] Decide the versification strategy for non-66-book / differently numbered sources (ARI mapping: normalize to ARI, skip and report unmapped content).
-  - [x] Decide which hosts to document in `sources.example.json` (placeholders only; none are active by default).
+  - [x] Decide which hosts to document in `src/OpenBible.Server/sources.example.json` (placeholders only; none are active by default).
 - [x] **Remove embedded content**
   - [x] Remove the bundled KJV and `BundledBibleSeeder`.
   - [x] Remove the embedded `version_config.json` and `BundledVersionCatalog`.
@@ -301,7 +301,7 @@ adr> Goal: ship the app **empty**. No embedded translation text, no embedded tra
   - [x] Server loads the registry from ASP.NET Core configuration (environment variables or a mounted JSON file); no default registry in the image.
   - [x] Expose the registry to the client through a small endpoint (`GET /api/sources`); an empty registry leaves manual import.
   - [x] Support catalog kinds `live` (query the host) and `file` (operator-supplied catalog, for example the former Yuku `version_config.json`).
-  - [x] Add `sources.example.json` (documentation only, not loaded by default) and document it in the README.
+  - [x] Add `src/OpenBible.Server/sources.example.json` (documentation only, not loaded by default) and document it in the README.
   - [x] Cache live catalogs in memory and `catalog-cache/{sourceId}.json`, refresh them on a schedule, and serve stale data when an upstream refresh fails.
   - [x] Built-in catalog adapters: Alkitab `version_config`, eBible redistributable listing, and CrossWire Bible category.
   - [x] Add a token-protected `/admin` page and `/api/admin/*` endpoints to inspect cached items and refresh a source manually.
