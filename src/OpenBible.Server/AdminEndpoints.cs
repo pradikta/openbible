@@ -75,6 +75,7 @@ internal static class AdminEndpoints
             id = item.Id,
             displayName = item.DisplayName,
             language = item.Language,
+            description = item.Description,
             license = item.License,
             downloadUrl = item.DownloadUrl
         }));
@@ -155,6 +156,7 @@ internal static class AdminEndpoints
             button:disabled { opacity:.5; cursor: wait; }
             table { width:100%; border-collapse: collapse; font-size:.85rem; }
             th, td { text-align:left; padding:.55rem .5rem; border-bottom:1px solid var(--line); vertical-align: top; }
+            td.description { max-width: 32rem; white-space: pre-wrap; }
             th { color: var(--muted); font-weight:600; font-size:.75rem; text-transform: uppercase; letter-spacing:.04em; }
             tr:last-child td { border-bottom:0; }
             .badge { display:inline-block; border-radius:9999px; padding:.1rem .5rem; font-size:.7rem; background:var(--line); color:var(--muted); }
@@ -185,7 +187,7 @@ internal static class AdminEndpoints
           <section class="panel" id="catalogPanel" hidden>
             <h2 id="catalogTitle">Catalog</h2>
             <table>
-              <thead><tr><th>ID</th><th>Name</th><th>Language</th><th>License</th><th>Download</th></tr></thead>
+              <thead><tr><th>ID</th><th>Name</th><th>Language</th><th>Description</th><th>License</th><th>Download</th></tr></thead>
               <tbody id="catalog"></tbody>
             </table>
           </section>
@@ -290,7 +292,7 @@ internal static class AdminEndpoints
               catalogBody.replaceChildren();
               for (const item of items) {
                 const tr = document.createElement('tr');
-                tr.append(cell(item.id), cell(item.displayName), cell(item.language), cell(item.license || 'not provided'));
+                tr.append(cell(item.id), cell(item.displayName), cell(item.language), cell(item.description, 'description'), cell(item.license || 'not provided'));
                 const linkCell = document.createElement('td');
                 const link = document.createElement('a');
                 link.href = item.downloadUrl;
