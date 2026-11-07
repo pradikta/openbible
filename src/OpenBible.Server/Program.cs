@@ -1,5 +1,6 @@
 using OpenBible.Domain.Interfaces;
 using OpenBible.Infrastructure.Sources;
+using OpenBible.Server;
 using OpenBible.Server.Sources;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -44,8 +45,15 @@ builder.Services
 
 var app = builder.Build();
 
+if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("OPENBIBLE_ADMIN_TOKEN"))
+    && string.IsNullOrWhiteSpace(builder.Configuration["Admin:Token"]))
+{
+    app.Logger.LogWarning("OPENBIBLE_ADMIN_TOKEN is not set; the /admin page and its API are unprotected.");
+}
+
 app.MapStaticAssets();
 app.MapSourceEndpoints();
+app.MapAdminEndpoints();
 
 // Lets the deploy workflow confirm which build is actually serving traffic.
 app.MapGet("/version.json", () => Results.Json(new

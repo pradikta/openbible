@@ -71,6 +71,22 @@ public sealed class SourceCatalogService : ISourceCatalog
             string.Equals(translation.Id, translationId, StringComparison.OrdinalIgnoreCase));
     }
 
+    public async Task<IReadOnlyList<SourceTranslation>> GetCachedTranslationsAsync(
+        IBibleSource source,
+        CancellationToken ct = default)
+    {
+        var cached = await GetCachedAsync(source, ct).ConfigureAwait(false);
+        return cached?.Items ?? [];
+    }
+
+    public async Task<CatalogCacheInfo?> GetCacheInfoAsync(IBibleSource source, CancellationToken ct = default)
+    {
+        var cached = await GetCachedAsync(source, ct).ConfigureAwait(false);
+        return cached is null
+            ? null
+            : new CatalogCacheInfo(cached.Items.Count, cached.FetchedAt, IsExpired(source, cached));
+    }
+
     public async Task RefreshAsync(IBibleSource source, CancellationToken ct = default)
     {
         await _refreshGate.WaitAsync(ct).ConfigureAwait(false);
@@ -194,6 +210,22 @@ public sealed class SourceCatalogService : ISourceCatalog
             .ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+    }
+
+    private async Task<CachedCatalog?> GetCachedAsync(IBibleSource source, CancellationToken ct)
+    {
+        if (_memory.TryGetValue(source.Id, out var cached))
+        {
+            return cached;
+        }
+
+        var disk = await LoadDiskAsync(source, ct).ConfigureAwait(false);
+        if (disk is not null)
+        {
+            _memory[source.Id] = disk;
+        }
+
+        return disk;
     }
 
     private async Task<CachedCatalog?> LoadDiskAsync(IBibleSource source, CancellationToken ct)
