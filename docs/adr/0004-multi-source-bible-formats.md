@@ -91,6 +91,7 @@ Because hosts now come from configuration, the proxy must validate every request
 - Manual import detects YES, USFM, and SWORD ZIP signatures and routes to the declared reader.
 - Install shows the source-provided license (or says it is missing), requires confirmation, and stores the shown text with the installed version.
 - Live catalogs are cached in memory and on disk (`catalog-cache/{sourceId}.json`) with a configurable TTL and background refresh; a failed refresh serves the stale cache. Built-in adapters cover the Alkitab `version_config.json`, the eBible redistributable listing, and the CrossWire Bible category.
+- A token-protected `/admin` page and `/api/admin/*` endpoints expose cache state, cached items, and manual refresh. `OPENBIBLE_ADMIN_TOKEN` enables authentication; when unset the endpoints are open for local/trusted use.
 
 ## Consequences
 

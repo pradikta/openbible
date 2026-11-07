@@ -304,6 +304,7 @@ adr> Goal: ship the app **empty**. No embedded translation text, no embedded tra
   - [x] Add `sources.example.json` (documentation only, not loaded by default) and document it in the README.
   - [x] Cache live catalogs in memory and `catalog-cache/{sourceId}.json`, refresh them on a schedule, and serve stale data when an upstream refresh fails.
   - [x] Built-in catalog adapters: Alkitab `version_config`, eBible redistributable listing, and CrossWire Bible category.
+  - [x] Add a token-protected `/admin` page and `/api/admin/*` endpoints to inspect cached items and refresh a source manually.
   - [x] Derive the `OpenBible.Server` download allow-list from the registry; the hard-coded host list and legacy endpoint are removed.
 - [x] **Proxy security**
   - [x] HTTPS only, and the host must match a registry entry; redirects are disabled rather than followed.

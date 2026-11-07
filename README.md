@@ -44,6 +44,7 @@ The solution builds with zero warnings and all tests pass (Domain 41, Applicatio
 | SWORD (zText/zText4, ZIP, KJV versification) reader | Implemented |
 | Automatic format detection for manual import | Implemented |
 | Live catalog cache and scheduled refresh (YES/USFM/SWORD adapters) | Implemented |
+| Catalog admin page (`/admin`) and manual refresh API | Implemented |
 | Install-time license confirmation and storage | Implemented |
 | Backup and restore of personal data | Implemented |
 | CI workflow, Docker image, GHCR publishing, Portainer redeploy | Implemented |
@@ -203,6 +204,22 @@ Example live source (placeholders only):
   "cacheMinutes": 360
 }
 ```
+
+##### Catalog admin page
+
+`OpenBible.Server` serves a small admin UI at `/admin` to:
+
+- view each source's cached item count, last fetch time, and stale status;
+- inspect the cached item list;
+- refresh a source immediately, bypassing the TTL and updating the cache.
+
+Set `OPENBIBLE_ADMIN_TOKEN` (or `Admin:Token`) to protect the admin API. The page asks for the token and sends it in the `X-Admin-Token` header; `?token=` also works for scripted calls. If the token is unset, `/admin` and `/api/admin/*` are open, so use them only on trusted networks.
+
+Admin API:
+
+- `GET /api/admin/sources` — sources and cache state.
+- `GET /api/admin/sources/{sourceId}/catalog` — cached items for one source.
+- `POST /api/admin/sources/{sourceId}/refresh` — fetch upstream now and update the cache.
 
 ##### GitHub Actions environment variables and secrets
 
