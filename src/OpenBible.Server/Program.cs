@@ -16,7 +16,13 @@ builder.Services.AddSingleton<ISourceRegistry>(sp => new SourceRegistry(
     sp.GetRequiredService<ILogger<SourceRegistry>>()));
 builder.Services.AddSingleton<ISourceCatalog, SourceCatalogService>();
 
-builder.Services.AddHttpClient(SourceCatalogService.ClientName, client => client.Timeout = TimeSpan.FromSeconds(30));
+builder.Services
+    .AddHttpClient(SourceCatalogService.ClientName, client => client.Timeout = TimeSpan.FromSeconds(30))
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+    {
+        AllowAutoRedirect = false,
+        UseCookies = false
+    });
 builder.Services
     .AddHttpClient(SourceEndpoints.DownloadClientName, client => client.Timeout = Timeout.InfiniteTimeSpan)
     .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
