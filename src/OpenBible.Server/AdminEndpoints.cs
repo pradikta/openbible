@@ -1,3 +1,4 @@
+using OpenBible.Domain.Entities;
 using OpenBible.Domain.Interfaces;
 using OpenBible.Server.Sources;
 
@@ -77,8 +78,20 @@ internal static class AdminEndpoints
             language = item.Language,
             description = item.Description,
             license = item.License,
+            licenseUrl = BuildLicenseUrl(source, item.Id),
             downloadUrl = item.DownloadUrl
         }));
+    }
+
+    private static string? BuildLicenseUrl(IBibleSource source, string translationId)
+    {
+        var id = Uri.EscapeDataString(translationId);
+        return (source.CatalogFormat ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            "ebible-html" => $"https://{source.Host}/find/details.php?id={id}",
+            "crosswire-bibles-html" => $"https://{source.Host}/sword/modules/ModInfo.jsp?modName={id}",
+            _ => null
+        };
     }
 
     private static async Task<IResult> RefreshAsync(
@@ -292,7 +305,16 @@ internal static class AdminEndpoints
               catalogBody.replaceChildren();
               for (const item of items) {
                 const tr = document.createElement('tr');
-                tr.append(cell(item.id), cell(item.displayName), cell(item.language), cell(item.description, 'description'), cell(item.license || 'not provided'));
+                const licenseCell = cell(item.license || 'not provided');
+                if (item.licenseUrl) {
+                  const details = document.createElement('a');
+                  details.href = item.licenseUrl;
+                  details.target = '_blank';
+                  details.rel = 'noopener noreferrer';
+                  details.textContent = ' details';
+                  licenseCell.append(details);
+                }
+                tr.append(cell(item.id), cell(item.displayName), cell(item.language), cell(item.description, 'description'), licenseCell);
                 const linkCell = document.createElement('td');
                 const link = document.createElement('a');
                 link.href = item.downloadUrl;

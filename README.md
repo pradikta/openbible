@@ -212,7 +212,8 @@ Example live source (placeholders only):
 `OpenBible.Server` serves a small admin UI at `/admin` to:
 
 - view each source's cached item count, last fetch time, and stale status;
-- inspect the cached item list;
+- inspect the cached item list, including language, description, and license;
+- open the upstream details page for exact license terms when the adapter provides one (eBible and CrossWire);
 - refresh a source immediately, bypassing the TTL and updating the cache.
 
 Set `OPENBIBLE_ADMIN_TOKEN` (or `Admin:Token`) to protect the admin API. The page asks for the token and sends it in the `X-Admin-Token` header; `?token=` also works for scripted calls. The token only protects `/admin` and `/api/admin/*`; it does not affect the public `/api/sources` endpoints, downloads, or installs. If the token is unset, `/admin` and `/api/admin/*` are open, so use them only on trusted networks.
