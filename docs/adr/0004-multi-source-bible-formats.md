@@ -26,13 +26,14 @@ This couples the app to one catalog and one format, and it puts the project in t
 
 | Abstraction | Layer | Responsibility |
 |---|---|---|
-| `IBibleSource` | Domain | Describes one registry entry: id, display name, format, base host, catalog kind, and whether it needs the proxy. |
-| `ISourceCatalog` | Domain | Lists the translations a source offers and returns per-item metadata, including license text when available. Implementations: a live listing from the host, or a catalog file supplied by the operator. |
-| `IBibleFormatReader` | Domain | Reads one package (stream) of one format and yields normalized content. `YesFileParser` becomes one implementation; `IYesFileReader` and `IYesSectionReader` stay as its internals. |
-| `IBibleFormatReaderSelector` | Application | Chooses the reader by declared format and, for manual import, by file signature. |
-| `ISourceRegistry` | Server / Infrastructure | Loads the registry from deployment configuration and exposes it to the app. |
+| `IBibleSource` | Domain | Describes one registry entry: id, display name, format, base host, catalog kind, and download metadata. `BibleSource` is the record implementation. |
+| `ISourceCatalog` | Domain / Server | Lists the translations a source offers and returns per-item metadata, including license text when available. `SourceCatalogService` handles live/file catalogs plus caching. |
+| `IBibleFormatReader` | Domain / Infrastructure | Reads one package (stream) of one format and yields normalized content. `YesFileParser`, `UsfmFormatReader`, and `SwordFormatReader` implement it. |
+| `IBibleFormatReaderSelector` | Domain / Infrastructure | Chooses the reader by declared format and, for manual import, by file signature. |
+| `ISourceRegistry` | Domain / Server | Loads the registry from deployment configuration and exposes it to the app. `SourceRegistry` is the server implementation. |
+| `ISourceDirectory` | Domain / Infrastructure | Client-side HTTP adapter for `/api/sources`, catalogs, and downloads (`HttpSourceDirectory`). |
 
-Application handlers (`ImportVersionHandler`, `GetSourcesQuery`, `GetSourceCatalogQuery`, `InstallVersionCommand`) stay behind MediatR and return DTOs. Blazor components still inject `IMediator` only.
+Application handlers (`ImportYesFileCommand`/`ImportYesFileHandler` for the declared formats, `GetSourcesQuery`, `GetSourceCatalogQuery`, `InstallSourceVersionCommand`) stay behind MediatR and return DTOs. Blazor components still inject `IMediator` only.
 
 ## Source registry (deployment configuration)
 
