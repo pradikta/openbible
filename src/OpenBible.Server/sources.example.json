@@ -8,8 +8,8 @@
       "host": "files.example.org",
       "downloadHost": "files.example.org",
       "catalogKind": "live",
-      "catalogUrl": "https://catalog.example.org/yes.json",
-      "catalogFormat": "catalog-json",
+      "catalogUrl": "https://catalog.example.org/version_config.json",
+      "catalogFormat": "alkitab-version-config",
       "downloadUrlFormat": "https://files.example.org/$TRANSLATION_ID.yes",
       "refreshMinutes": 360,
       "cacheMinutes": 360
