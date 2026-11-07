@@ -5,6 +5,11 @@
 
 <PageTitle>Library</PageTitle>
 
+@if (_notice is not null)
+{
+    <div class="notice-box" role="status">@_notice</div>
+}
+
 <section class="panel">
     <h1>Bible versions</h1>
     <p class="muted">Installed translations stay on this device.</p>
@@ -126,6 +131,7 @@
     private bool _confirmClearHistory;
     private bool _confirmFactoryReset;
     private string? _error;
+    private string? _notice;
     private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
@@ -137,6 +143,7 @@
     {
         _loading = true;
         _error = null;
+        _notice = null;
         var versions = await Mediator.Send(new GetInstalledVersionsQuery());
         if (!versions.IsSuccess || versions.Value is null)
         {
@@ -216,6 +223,7 @@
     {
         _loading = true;
         _error = null;
+        _notice = null;
         _confirmClearHistory = false;
 
         try
@@ -241,6 +249,7 @@
     {
         _loading = true;
         _error = null;
+        _notice = null;
         _confirmFactoryReset = false;
 
         try
@@ -260,10 +269,11 @@
             _activeVersionId = null;
             _defaultVersionId = null;
             _loading = false;
-            _error = "All data cleared. App reset to factory defaults.";
+            _notice = "All data cleared. App reset to factory defaults.";
         }
         catch (Exception ex)
         {
+            _notice = null;
             _error = $"Failed to reset: {ex.Message}";
             _loading = false;
         }

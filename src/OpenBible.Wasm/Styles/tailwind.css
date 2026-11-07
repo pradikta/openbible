@@ -452,6 +452,10 @@
         @apply my-4 flex items-start gap-3 rounded-xl border border-line bg-danger-soft p-4 text-danger;
     }
 
+    .notice-box {
+        @apply my-4 rounded-xl border border-line bg-accent-soft p-4 text-sm text-ink;
+    }
+
     .spinner {
         @apply mb-3 size-9 animate-spin rounded-full border-[3px] border-line border-t-accent;
     }
