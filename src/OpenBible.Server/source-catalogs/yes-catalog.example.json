@@ -1,0 +1,13 @@
+{
+  "_note": "Placeholder only. Replace files.example.org and the item with a YES source you are authorized to use. Do not commit a real host or full URL unless the translation's license permits it.",
+  "downloadUrlFormat": "https://files.example.org/$TRANSLATION_ID.yes",
+  "items": [
+    {
+      "id": "example-yes",
+      "name": "Example YES translation",
+      "language": "en",
+      "description": "Replace this with a translation you are allowed to install.",
+      "license": "Verify the source license before use."
+    }
+  ]
+}

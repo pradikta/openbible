@@ -1,0 +1,13 @@
+{
+  "_note": "Placeholder only. Replace files.example.org and the item with a USFM source you are authorized to use. The USFM reader accepts a ZIP of .usfm/.sfm files or a single file.",
+  "downloadUrlFormat": "https://files.example.org/$TRANSLATION_ID_usfm.zip",
+  "items": [
+    {
+      "id": "example-usfm",
+      "name": "Example USFM translation",
+      "language": "en",
+      "description": "Replace this with a USFM package you are allowed to install.",
+      "license": "Verify the source license before use."
+    }
+  ]
+}

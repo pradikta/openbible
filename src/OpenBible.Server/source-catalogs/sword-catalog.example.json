@@ -1,0 +1,13 @@
+{
+  "_note": "Placeholder only. Replace files.example.org and the item with a SWORD source you are authorized to use. The package must be a zText/zText4 module ZIP with KJV versification.",
+  "downloadUrlFormat": "https://files.example.org/$TRANSLATION_ID.zip",
+  "items": [
+    {
+      "id": "example-sword",
+      "name": "Example SWORD translation",
+      "language": "en",
+      "description": "Replace this with a SWORD module you are allowed to install.",
+      "license": "Verify the source license before use."
+    }
+  ]
+}

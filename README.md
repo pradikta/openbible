@@ -133,7 +133,7 @@ The Docker image includes the server. On a static host without this API, use man
 
 ### Source registry (optional)
 
-`OpenBible.Server` can expose a deployment-configured source registry for multi-format installs. Configure it with the `Sources` array (environment variables such as `OPENBIBLE_SOURCES__0__ID`, or a mounted JSON file named by `OPENBIBLE_SOURCES_FILE`). `src/OpenBible.Server/sources.example.json` and `src/OpenBible.Server/source-catalogs/example-catalog.example.json` are documentation only and are not loaded by default.
+`OpenBible.Server` can expose a deployment-configured source registry for multi-format installs. Configure it with the `Sources` array (environment variables such as `OPENBIBLE_SOURCES__0__ID`, or a mounted JSON file named by `OPENBIBLE_SOURCES_FILE`). `src/OpenBible.Server/sources.example.json` and the `src/OpenBible.Server/source-catalogs/*.example.json` files are documentation only and are not loaded by default. The committed example includes one file-catalog source per format (YES, USFM, and SWORD).
 
 - `GET /api/sources` lists configured sources; it is empty by default.
 - `GET /api/sources/{sourceId}/catalog` lists translations from a `live` or `file` catalog.
@@ -215,7 +215,7 @@ Example live source (placeholders only):
 - inspect the cached item list;
 - refresh a source immediately, bypassing the TTL and updating the cache.
 
-Set `OPENBIBLE_ADMIN_TOKEN` (or `Admin:Token`) to protect the admin API. The page asks for the token and sends it in the `X-Admin-Token` header; `?token=` also works for scripted calls. If the token is unset, `/admin` and `/api/admin/*` are open, so use them only on trusted networks.
+Set `OPENBIBLE_ADMIN_TOKEN` (or `Admin:Token`) to protect the admin API. The page asks for the token and sends it in the `X-Admin-Token` header; `?token=` also works for scripted calls. The token only protects `/admin` and `/api/admin/*`; it does not affect the public `/api/sources` endpoints, downloads, or installs. If the token is unset, `/admin` and `/api/admin/*` are open, so use them only on trusted networks.
 
 Admin API:
 
