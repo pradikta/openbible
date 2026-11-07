@@ -60,6 +60,10 @@ public static class EbibleHtmlParser
                 name = language.Length > 0 ? language : id;
             }
 
+            var territory = cells.Count > 0 ? cells[0] : string.Empty;
+            var vernacular = cells.Count > 3 ? cells[3] : string.Empty;
+            var description = BuildDescription(territory, vernacular, name);
+
             if (items.TryGetValue(id, out var existing) && existing.DisplayName.Length >= name.Length)
             {
                 continue;
@@ -74,12 +78,28 @@ public static class EbibleHtmlParser
                 id,
                 name,
                 language,
-                "Freely redistributable per the eBible.org listing; verify the translation's terms.",
+                description,
                 "Freely redistributable (verify the translation's terms)",
                 url);
         }
 
         return [.. items.Values];
+    }
+
+    private static string BuildDescription(string territory, string vernacular, string name)
+    {
+        var parts = new List<string>(2);
+        if (vernacular.Length > 0 && !string.Equals(vernacular, name, StringComparison.OrdinalIgnoreCase))
+        {
+            parts.Add(vernacular);
+        }
+
+        if (territory.Length > 0)
+        {
+            parts.Add(territory);
+        }
+
+        return parts.Count > 0 ? string.Join(" · ", parts) : "eBible.org translation.";
     }
 
     private static string Clean(string value)

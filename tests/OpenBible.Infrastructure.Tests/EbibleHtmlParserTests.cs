@@ -35,6 +35,7 @@ public sealed class EbibleHtmlParserTests
         Assert.Equal("rup", item.Id);
         Assert.Equal("Aromanian", item.Language);
         Assert.Equal("Aromanian Bible", item.DisplayName);
+        Assert.Equal("Biblija tu limba Rrãmãnã · Albania", item.Description);
         Assert.Equal("https://ebible.org/Scriptures/rup_usfm.zip", item.DownloadUrl);
     }
 
