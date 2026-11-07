@@ -90,6 +90,7 @@ Because hosts now come from configuration, the proxy must validate every request
 - SWORD supports zText/zText4 modules with ZIP compression and KJV versification. BZIP2, LZSS, XZ, and non-KJV versifications are rejected with a clear error rather than read incorrectly. The reader was verified against a public-domain KJV zText module (66 books, 31,102 verses, Genesis 1:1-3 text correct).
 - Manual import detects YES, USFM, and SWORD ZIP signatures and routes to the declared reader.
 - Install shows the source-provided license (or says it is missing), requires confirmation, and stores the shown text with the installed version.
+- Live catalogs are cached in memory and on disk (`catalog-cache/{sourceId}.json`) with a configurable TTL and background refresh; a failed refresh serves the stale cache. Built-in adapters cover the Alkitab `version_config.json`, the eBible redistributable listing, and the CrossWire Bible category.
 
 ## Consequences
 

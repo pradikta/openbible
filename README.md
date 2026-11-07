@@ -29,7 +29,7 @@ The reader, search, and personal study data run in the browser. The app needs an
 
 ## Status
 
-The solution builds with zero warnings and all tests pass (Domain 41, Application 70, Infrastructure 116; 227 in total). Implemented versus pending:
+The solution builds with zero warnings and all tests pass (Domain 41, Application 70, Infrastructure 121; 232 in total). Implemented versus pending:
 
 | Area | State |
 |---|---|
@@ -43,6 +43,7 @@ The solution builds with zero warnings and all tests pass (Domain 41, Applicatio
 | YES (`.yes`/`.yes.gz`) and USFM (ZIP or single file) readers | Implemented |
 | SWORD (zText/zText4, ZIP, KJV versification) reader | Implemented |
 | Automatic format detection for manual import | Implemented |
+| Live catalog cache and scheduled refresh (YES/USFM/SWORD adapters) | Implemented |
 | Install-time license confirmation and storage | Implemented |
 | Backup and restore of personal data | Implemented |
 | CI workflow, Docker image, GHCR publishing, Portainer redeploy | Implemented |
@@ -171,13 +172,45 @@ The file is optional; if the path is unset or the file is absent, the registry i
 
 The examples use `example.org` placeholders. Do not put real hosts or full download URLs into committed files unless you have verified that the translation's license and the host's terms permit it. Keep real hosts/URLs in the gitignored `sources.json` and `*.local.json` files, and keep license text with the source entry so the app can show it before install.
 
+#### Live catalogs, caching, and refresh
+
+A source with `catalogKind: "live"` fetches its item list from `catalogUrl` (or `https://{Host}{CatalogPath}` when `catalogUrl` is unset) and caches it.
+
+- `catalogFormat`:
+  - `catalog-json` — the catalog JSON shape shown above (default).
+  - `alkitab-version-config` — Alkitab `version_config.json` (`presets`); use `downloadUrlFormat` to point at the final file host.
+  - `ebible-html` — eBible.org `/find/`; only freely redistributable entries are included.
+  - `crosswire-bibles-html` — CrossWire "Bible Texts" category; each module is a SWORD ZIP.
+- `downloadHost` (defaults to `Host`) and `downloadUrlFormat` (with `$TRANSLATION_ID`) control the URLs built for parsed catalogs. The download URL must be the final HTTPS URL on `downloadHost`; redirects are not followed.
+- `refreshMinutes` enables a background refresh; `cacheMinutes` controls how long the cache is served before an on-demand refresh. A failed refresh keeps the last cached copy.
+- The cache lives in memory and in `catalog-cache/{sourceId}.json` under the content root. Override the directory with `CatalogCache:Directory` or `OPENBIBLE_CATALOG_CACHE`, and mount a writable volume in Docker/Portainer if the container filesystem is read-only.
+- The HTML adapters are best-effort: they depend on upstream markup, terms, and availability. Keep refresh intervals modest (hours, not minutes), respect the host's terms, and prefer a `catalog-json` endpoint you control if the upstream is unstable. The proxy does not send credentials, so only public catalog endpoints are supported.
+
+Example live source (placeholders only):
+
+```json
+{
+  "id": "example-live",
+  "displayName": "Example live source",
+  "format": "yes",
+  "host": "files.example.org",
+  "downloadHost": "files.example.org",
+  "catalogKind": "live",
+  "catalogUrl": "https://catalog.example.org/yes.json",
+  "catalogFormat": "catalog-json",
+  "downloadUrlFormat": "https://files.example.org/$TRANSLATION_ID.yes",
+  "refreshMinutes": 360,
+  "cacheMinutes": 360
+}
+```
+
 ##### GitHub Actions environment variables and secrets
 
 The workflow in this repository builds the image and triggers a Portainer redeploy. It does **not** mutate the running stack, so source configuration must also exist in the Portainer stack environment (or as a mounted file). A common setup is:
 
 1. **Settings → Environments → `PRD` → Environment variables**: store non-sensitive registry values, for example `OPENBIBLE_SOURCES__0__ID`, `OPENBIBLE_SOURCES__0__HOST`, and `OPENBIBLE_SOURCES__0__CATALOGKIND`. Reference them in a workflow as `${{ vars.NAME }}`.
 2. **Settings → Environments → `PRD` → Environment secrets**: store credentials only, such as `PORTAINER_WEBHOOK_URL`, `CF_ACCESS_CLIENT_ID`, and `CF_ACCESS_CLIENT_SECRET`. Reference them as `${{ secrets.NAME }}`.
-3. **Portainer stack**: set the same `OPENBIBLE_SOURCES__*` keys in the stack environment, or mount `sources.json` and set `OPENBIBLE_SOURCES_FILE`. Changing a GitHub variable alone does not update a running container.
+3. **Portainer stack**: set the same `OPENBIBLE_SOURCES__*` keys in the stack environment, or mount `sources.json` and set `OPENBIBLE_SOURCES_FILE`. Mount a writable volume for the catalog cache (or set `OPENBIBLE_CATALOG_CACHE=/data/catalog-cache`). Changing a GitHub variable alone does not update a running container.
 4. **GitHub as the source of truth (optional)**: add a deployment step that calls the Portainer API to update the stack environment before redeploying. Keep registry values in environment variables, not secrets, unless the value is actually sensitive.
 
 Do not commit `sources.json`, `*.local.json`, or real host credentials; they are ignored by git and the committed examples use placeholders. The proxy does not forward cookies or credentials, so authenticated or private catalogs are not supported; use a host that serves files without authentication.
@@ -532,7 +565,7 @@ Tests use xUnit and NSubstitute. Domain tests cover ARI math, value-object equal
 ```mermaid
 flowchart LR
     PR["Pull request / push to main"] --> CI["CI workflow"]
-    CI --> B["Build + test (227 tests)"]
+    CI --> B["Build + test (232 tests)"]
     CI --> C["Validate docker compose"]
     CI --> S["Smoke test amd64 + arm64"]
     B & C & S --> OK{"All green on main?"}
